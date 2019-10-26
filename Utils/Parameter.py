@@ -17,7 +17,7 @@ model_params = {
 
 g_params = {
     'cv': StratifiedKFold(4, shuffle=True, random_state=42),
-    'num_boost_round': 6000,
+    'num_boost_round': 10000,
     'early_stopping_rounds': 100,
     'verbose': 1000,
     'split': 'building_id',
