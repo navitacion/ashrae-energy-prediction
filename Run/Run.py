@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime
+import sys
 from tqdm import tqdm
 
 from Utils.Dataset import PreprocessingDataset
@@ -36,15 +37,19 @@ _ = model.train(data.df, **g_params)
 
 # Prediction  #####################################################################
 # Chunksize ver
-
+print('Prediction')
 chunk_size = 50000
+test_num = 41697600
+limit = int(np.ceil(test_num / chunk_size))
 test_reader = pd.read_csv("../input/test.csv", chunksize=chunk_size)
 df_weather_test = pd.read_csv("../input/weather_test.csv")
 df_building = pd.read_csv("../input/building_metadata.csv")
 
 pred_all = []
 
-for test in tqdm(test_reader):
+for i, test in enumerate(test_reader):
+    print("\r" + str(i) + "/" + str(limit), end="")
+    sys.stdout.flush()
     data.prep(test, df_weather_test, df_building, mode='test')
     pred = model.predict(data.df, step_size=None)
     pred_all.append(pred)
@@ -56,3 +61,5 @@ sub = pd.read_csv("../input/sample_submission.csv")
 sub["meter_reading"] = pred_all
 today = datetime.datetime.now().strftime('%Y%m%d')
 sub.to_csv("../Output/submission_{}_oof_{:.3f}.csv".format(today, model.oof), index=False)
+
+print('\nSubmit File Already!')
