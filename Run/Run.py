@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime
+import time
 import sys
 from tqdm import tqdm
 
@@ -39,6 +40,7 @@ _ = model.train(data.df, **g_params)
 # Chunksize ver
 print('Prediction')
 chunk_size = 50000
+_start = time.time()
 test_num = 41697600
 limit = int(np.ceil(test_num / chunk_size))
 test_reader = pd.read_csv("../input/test.csv", chunksize=chunk_size)
@@ -63,3 +65,6 @@ today = datetime.datetime.now().strftime('%Y%m%d')
 sub.to_csv("../Output/submission_{}_oof_{:.3f}.csv".format(today, model.oof), index=False)
 
 print('\nSubmit File Already!')
+elapsedtime = time.time() - _start
+print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
+print('')
