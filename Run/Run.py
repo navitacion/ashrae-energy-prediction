@@ -13,6 +13,7 @@ from Utils.Parameter import *
 # Config  #####################################################################
 Sampling_rate = None
 SEED = 42
+chunk_size = 50000
 
 # Prep Train Data  #####################################################################
 print('Data Loading...')
@@ -39,7 +40,6 @@ _ = model.train(data.df, **g_params)
 # Prediction  #####################################################################
 # Chunksize ver
 print('Prediction')
-chunk_size = 50000
 _start = time.time()
 test_num = 41697600
 limit = int(np.ceil(test_num / chunk_size))
