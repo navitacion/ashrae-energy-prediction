@@ -17,7 +17,7 @@ class Trainer:
         pass
 
     def train(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, split=None):
-        self.y = np.log1p(df['meter_reading'])
+        self.y = df['meter_reading']
         self.x = df.drop(['meter_reading'], axis=1)
         self.cv = cv
         self.oof = 0.0
@@ -64,21 +64,19 @@ class Trainer:
         if 'row_id' in df.columns:
             df.drop('row_id', axis=1, inplace=True)
 
-        if step_size is not None:
-            i = 0
-            res = []
-            for j in range(int(np.ceil(df.shape[0] / step_size))):
-                res.append(np.expm1(sum(
-                    [model.predict(df.iloc[i:i + step_size], num_iteration=model.best_iteration) for model in
-                     self.models]) / self.cv.n_splits))
-                i += step_size
+        i = 0
+        res = []
+        for j in range(int(np.ceil(df.shape[0] / step_size))):
+            test_num = 41697600
+            limit = int(np.floor(test_num / step_size))
+            print("\r" + str(j+1) + "/" + str(limit), end="")
+            sys.stdout.flush()
+            res.append(np.expm1(sum(
+                [model.predict(df.iloc[i:i + step_size], num_iteration=model.best_iteration) for model in
+                 self.models]) / self.cv.n_splits))
+            i += step_size
 
-            res = np.concatenate(res)
-
-        else:
-            res = np.zeros(len(df))
-            for model in self.models:
-                res += model.predict(df) / self.cv.n_splits
+        res = np.concatenate(res)
 
         return res
 

@@ -6,7 +6,7 @@ model_params = {
     'boosting_type': 'gbdt',
     'objective': 'regression',
     'metric': {'rmse'},
-    'learning_rate': 0.01,
+    'learning_rate': 0.05,
     'feature_fraction': 0.9,
     'bagging_fraction': 0.9,
     'seed': 42
@@ -16,8 +16,8 @@ model_params = {
 # General Params  ##################################################################
 
 g_params = {
-    'cv': StratifiedKFold(4, shuffle=True, random_state=42),
-    'num_boost_round': 10000,
+    'cv': StratifiedKFold(3, shuffle=True, random_state=42),
+    'num_boost_round': 4000,
     'early_stopping_rounds': 100,
     'verbose': 1000,
     'split': 'building_id',
