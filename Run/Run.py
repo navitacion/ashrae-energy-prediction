@@ -31,13 +31,20 @@ if Sampling_rate is not None:
 # Prepare Train Data
 Dataset = PreprocessingDataset()
 Dataset.prep(train, df_weather_train, df_building, mode='train')
+# Save Preprocessed Train Data
+with open('../input/prep_train.pkl', 'wb') as f:
+    pickle.dump(Dataset, f, protocol=4)
+# Memory Clear
 del train, df_weather_train, df_building
 gc.collect()
 print('Data Already...')
 
 # Model Create  #####################################################################
 model = Trainer()
-_ = model.train(data.df, **g_params)
+_ = model.train(Dataset.df, **g_params)
+# save models
+with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
+    pickle.dump(model.models, f)
 
 # Plot Feature Importances  #####################################################################
 # model.get_feature_importance()
@@ -48,16 +55,16 @@ _start = time.time()
 df_weather_test = pd.read_csv("../input/weather_test.csv")
 df_building = pd.read_csv("../input/building_metadata.csv")
 
-pred_all = []
-
-for i, test in enumerate(test_reader):
-    print("\r" + str(i) + "/" + str(limit), end="")
-    sys.stdout.flush()
-    data.prep(test, df_weather_test, df_building, mode='test')
-    pred = model.predict(data.df, step_size=None)
-    pred_all.append(pred)
-
-pred_all = np.concatenate(pred_all)
+# Prepare Test Data
+test = pd.read_csv("../input/test.csv")
+Dataset.prep(test, df_weather_test, df_building, mode='test')
+# Save Preprocessed Train Data
+with open('../input/prep_test.pkl', 'wb') as f:
+    pickle.dump(Dataset, f, protocol=4)
+# Memory Clear
+del test, df_weather_test, df_building
+gc.collect()
+pred_all = model.predict(Dataset.df, step_size=chunk_size)
 
 # Make Submission File
 sub = pd.read_csv("../input/sample_submission.csv")
