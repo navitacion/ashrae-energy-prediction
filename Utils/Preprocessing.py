@@ -58,6 +58,9 @@ def extract_id_meter(df, building_id, meter):
 
 # Preprocessing for Core Data
 def prep_core_data(df):
+    # Log
+    df['meter_reading'] = np.log1p(df['meter_reading'].values)
+
     # Check lossed Date  ####################################################################
     id_list = []
     meter_list = []
@@ -79,7 +82,7 @@ def prep_core_data(df):
     })
     del id_list, meter_list, rows_list
 
-    # Fill dropped Date
+    # Fill dropped Date  ####################################################################
     def fill_date(_df, building_id, meter):
         temp = extract_id_meter(_df, building_id, meter)
 
@@ -93,7 +96,7 @@ def prep_core_data(df):
         temp['meter'] = meter
 
         temp = temp[temp['meter_reading'].isnull()]
-        _df = pd.concat([_df, temp], axis=0, ignore_index=True)
+        _df = pd.concat([_df, temp], axis=0, ignore_index=True, sort=True)
 
         return _df
 
@@ -103,15 +106,16 @@ def prep_core_data(df):
     # Interpolate    ####################################################################
     for _id in range(df['building_id'].nunique()):
         for meter in df['meter'].unique().tolist():
-            # building_id, meterで抽出
+            # Extract by building_id, meter
             temp = extract_id_meter(df, _id, meter)
             temp = temp.sort_values(by='timestamp')
 
             if temp.empty:
                 continue
-            # meter_readingが0のものを欠損として扱う
+
+            # Deal the values between 0 and 0 as Nan
             temp.loc[temp['meter_reading'] == 0, 'meter_reading'] = np.nan
-            # 欠損を内挿で埋める
+            # Use Interpolation for Filling NaN
             temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=5)
             df.loc[temp.index, 'meter_reading'] = temp.loc[temp.index, 'meter_reading']
 
