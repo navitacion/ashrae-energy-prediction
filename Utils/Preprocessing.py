@@ -114,6 +114,12 @@ def prep_core_data(df):
                 continue
 
             # Deal the values between 0 and 0 as Nan
+            temp['shifted_past'] = temp['meter_reading'].shift()
+            temp['shifted_future'] = temp['meter_reading'].shift(-1)
+            drop_rows = temp.query("shifted_past == 0 & shifted_future == 0 & meter_reading > 0")
+            df.loc[drop_rows.index, 'meter_reading'] = np.nan
+
+            # Date of meter_reading == 0 deals as NaN
             temp.loc[temp['meter_reading'] == 0, 'meter_reading'] = np.nan
             # Use Interpolation for Filling NaN
             temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=5)
@@ -174,18 +180,32 @@ def prep_weather_data(df):
         # Rolling
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed_sin', 'wind_speed_cos']
         for c in cols:
-            for window in range(2, 5, 1):
+            for window in [3, 72]:
+                # Mean
                 colname = '{}_roll_{}_mean'.format(c, window)
                 temp[colname] = temp[c].rolling(window).mean()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
+                df[colname] = df[colname].astype(np.float32)
+                # Sum
                 colname = '{}_roll_{}_sum'.format(c, window)
                 temp[colname] = temp[c].rolling(window).sum()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
+                df[colname] = df[colname].astype(np.float32)
+                # Max
+                colname = '{}_roll_{}_max'.format(c, window)
+                temp[colname] = temp[c].rolling(window).max()
+                df.loc[temp.index, colname] = temp.loc[temp.index, colname]
+                df[colname] = df[colname].astype(np.float32)
+                # Min
+                colname = '{}_roll_{}_min'.format(c, window)
+                temp[colname] = temp[c].rolling(window).min()
+                df.loc[temp.index, colname] = temp.loc[temp.index, colname]
+                df[colname] = df[colname].astype(np.float32)
 
         # Shift
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed_sin', 'wind_speed_cos']
         for c in cols:
-            for period in range(1, 3, 1):
+            for period in [1, 2, 24, 48]:
                 colname = '{}_shift_{}'.format(c, period)
                 shifted = temp[c].shift(periods=period)
                 temp[colname] = temp[c] - shifted
