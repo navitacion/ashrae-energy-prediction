@@ -178,7 +178,7 @@ def prep_weather_data(df):
         temp = df[df['site_id'] == i]
         temp = temp.sort_values(by='timestamp')
         # Rolling
-        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed_sin', 'wind_speed_cos']
+        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
         for c in cols:
             for window in [3, 72]:
                 # Mean
@@ -203,7 +203,7 @@ def prep_weather_data(df):
                 df[colname] = df[colname].astype(np.float32)
 
         # Shift
-        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed_sin', 'wind_speed_cos']
+        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
         for c in cols:
             for period in [1, 2, 24, 48]:
                 colname = '{}_shift_{}'.format(c, period)
