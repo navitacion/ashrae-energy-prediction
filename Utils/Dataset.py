@@ -38,9 +38,11 @@ class PreprocessingDataset:
 
         # merge data  #####################################################################
         df = pd.merge(df, df_building, how="left", on=["building_id"])
+        del df_building
+        gc.collect()
         df = pd.merge(df, df_weather, how='left', on=["site_id", "timestamp"])
         self.df, _ = reduce_mem_usage(df)
-        del df, df_weather, df_building
+        del df, df_weather
         gc.collect()
 
         # primary_use  #####################################################################
@@ -65,7 +67,8 @@ class PreprocessingDataset:
         self.df['hour'] = self.df['timestamp'].dt.hour.astype(np.uint8)
         self.df['weekday'] = self.df['timestamp'].dt.weekday.astype(np.uint8)
         # Sort Timestamp  #####################################################################
-        self.df = self.df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
+        if mode == 'train':
+            self.df = self.df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
         del self.df['timestamp']
         gc.collect()
 

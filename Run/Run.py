@@ -18,6 +18,9 @@ SEED = 42
 chunk_size = 50000
 today = datetime.datetime.now().strftime('%Y%m%d')
 use_pickle = True
+use_col_nums = 40
+set_cols = pd.read_csv('../Importance/importance_20191029.csv')['feature'][:use_col_nums].tolist()
+train_set_cols = set_cols + ['meter_reading']
 
 # Prep Train Data  #####################################################################
 
@@ -52,13 +55,10 @@ print('Data Already...')
 
 # Model Create  #####################################################################
 model = Trainer()
-_ = model.train(Dataset.df, **g_params)
+_ = model.train(Dataset.df[train_set_cols], **g_params)
 # save models
 with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
     pickle.dump(model.models, f)
-
-# Plot Feature Importances  #####################################################################
-# model.get_feature_importance()
 
 # Prediction  #####################################################################
 print('Prediction')
