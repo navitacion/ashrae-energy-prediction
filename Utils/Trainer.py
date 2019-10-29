@@ -90,9 +90,10 @@ class Trainer:
             'feature': self.features,
             'importance': importance
         })
-        importance_df = importance_df.sort_values(by='importance', ascending=False)
+        importance_df = importance_df.sort_values(by='importance', ascending=False).reset_index(drop=True)
+        today = datetime.datetime.now().strftime('%Y%m%d')
+        importance_df.to_csv('../Importance/importance_{}.csv'.format(today), index=False)
 
         fig = plt.figure(figsize=(12, 20))
         sns.barplot(x='importance', y='feature', data=importance_df)
-        today = datetime.datetime.now().strftime('%Y%m%d')
-        plt.savefig('.../Output/FeatureImportance_{}.png'.format(today))
+        plt.savefig('../Importance/FeatureImportance_{}.png'.format(today))
