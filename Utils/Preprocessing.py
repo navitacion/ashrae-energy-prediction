@@ -205,7 +205,7 @@ def prep_weather_data(df):
         # Shift
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
         for c in cols:
-            for period in [1, 2, 24, 48]:
+            for period in [1, 24, 48]:
                 colname = '{}_shift_{}'.format(c, period)
                 shifted = temp[c].shift(periods=period)
                 temp[colname] = temp[c] - shifted
