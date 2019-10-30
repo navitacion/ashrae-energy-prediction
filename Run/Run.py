@@ -17,14 +17,18 @@ _start = time.time()
 chunk_size = 50000
 today = datetime.datetime.now().strftime('%Y%m%d')
 use_col_nums = 40
-set_cols = pd.read_csv('../Importance/importance_20191029.csv')['feature'][:use_col_nums].tolist()
-train_set_cols = set_cols + ['meter_reading']
+
+train_data_path = '../input/prep_train_20191030.pkl'
+test_data_path = '../input/prep_test_20191030.pkl'
+feature_importance_list_path = '../Importance/importance_20191030.csv'
 
 # Prep Train Data  #####################################################################
+set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
+train_set_cols = set_cols + ['meter_reading']
 
 # Load Pkl File  #####################################################################
 print('Create Model...')
-with open('../input/prep_train.pkl', 'rb') as f:
+with open(train_data_path, 'rb') as f:
     Dataset = pickle.load(f)
 
 # Model Create  #####################################################################
@@ -38,7 +42,7 @@ with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
 
 # Load Pkl File  #####################################################################
 print('Prediction...')
-with open('../input/prep_test.pkl', 'rb') as f:
+with open(test_data_path, 'rb') as f:
     Dataset = pickle.load(f)
 
 # Pred  #####################################################################
