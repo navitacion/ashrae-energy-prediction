@@ -168,7 +168,6 @@ def prep_weather_data(df):
     df['wind_direction'] = np.radians(df['wind_direction'])
     df['wind_direction_sin'] = np.sin(df['wind_direction'])
     df['wind_direction_cos'] = np.cos(df['wind_direction'])
-    df['wind_direction_tan'] = np.tan(df['wind_direction'])
 
     df['wind_speed_sin'] = df['wind_speed'] * df['wind_direction_sin']
     df['wind_speed_cos'] = df['wind_speed'] * df['wind_direction_cos']
@@ -178,7 +177,7 @@ def prep_weather_data(df):
         temp = df[df['site_id'] == i]
         temp = temp.sort_values(by='timestamp')
         # Rolling
-        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
+        cols = ['air_temperature', 'dew_temperature', 'relative_hummd']
         for c in cols:
             for window in [3, 72]:
                 # Mean
@@ -205,7 +204,7 @@ def prep_weather_data(df):
         # Shift
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
         for c in cols:
-            for period in [1, 24, 48]:
+            for period in [1, 24]:
                 colname = '{}_shift_{}'.format(c, period)
                 shifted = temp[c].shift(periods=period)
                 temp[colname] = temp[c] - shifted
