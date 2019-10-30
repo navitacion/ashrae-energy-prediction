@@ -13,8 +13,7 @@ from Utils.Parameter import *
 
 
 # Config  #####################################################################
-Sampling_rate = None
-SEED = 42
+_start = time.time()
 chunk_size = 50000
 today = datetime.datetime.now().strftime('%Y%m%d')
 use_col_nums = 40
@@ -33,7 +32,7 @@ model = Trainer()
 _ = model.train(Dataset.df[train_set_cols], **g_params)
 # save models
 with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
-    pickle.dump(model.models, f)
+    pickle.dump(model, f)
 
 # Prediction  #####################################################################
 
