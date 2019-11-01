@@ -5,6 +5,7 @@ import seaborn as sns
 import time
 import datetime
 import sys
+import gc
 
 from sklearn.metrics import mean_squared_error
 

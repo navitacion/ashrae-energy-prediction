@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import datetime
+import gc
 
 
 # Based on this great kernel https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
@@ -81,6 +83,7 @@ def prep_core_data(df):
         'rows': rows_list
     })
     del id_list, meter_list, rows_list
+    gc.collect()
 
     # Fill dropped Date  ####################################################################
     def fill_date(_df, building_id, meter):
@@ -103,6 +106,9 @@ def prep_core_data(df):
     for _id, meter in zip(df_loss['building_id'], df_loss['meter']):
         df = fill_date(df, _id, meter)
 
+    del df_loss, temp
+    gc.collect()
+
     # Interpolate    ####################################################################
     for _id in range(df['building_id'].nunique()):
         for meter in df['meter'].unique().tolist():
@@ -124,6 +130,9 @@ def prep_core_data(df):
             # Use Interpolation for Filling NaN
             temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=5)
             df.loc[temp.index, 'meter_reading'] = temp.loc[temp.index, 'meter_reading']
+
+    del temp
+    gc.collect()
 
     # Dropna    ####################################################################
     df.dropna(inplace=True)
@@ -149,6 +158,9 @@ def prep_weather_data(df):
             temp[c] = temp[c].interpolate(limit_direction='both')
             df.loc[temp.index, c] = temp.loc[temp.index, c]
 
+    del temp
+    gc.collect()
+
     # relative Hummd  #####################################################################
     # https://soudan1.biglobe.ne.jp/qa5356721.html
     a_temp = df['air_temperature'].values
@@ -162,6 +174,7 @@ def prep_weather_data(df):
 
     df['relative_hummd'] = d_temp / a_temp * 100
     del a_temp, d_temp
+    gc.collect()
 
     # Wind Direction  #####################################################################
     df.loc[df['wind_direction'] == 65535, 'wind_direction'] = np.nan
@@ -171,6 +184,9 @@ def prep_weather_data(df):
 
     df['wind_speed_sin'] = df['wind_speed'] * df['wind_direction_sin']
     df['wind_speed_cos'] = df['wind_speed'] * df['wind_direction_cos']
+
+    for c in ['wind_speed_sin', 'wind_speed_cos']:
+        df[c] = df[c].astype(np.float16)
 
     # Create Features per Site Id  #####################################################################
     for i in range(df['site_id'].nunique()):
@@ -209,6 +225,10 @@ def prep_weather_data(df):
                 shifted = temp[c].shift(periods=period)
                 temp[colname] = temp[c] - shifted
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
+                df[colname] = df[colname].astype(np.float16)
+
+    del temp
+    gc.collect()
 
     return df
 

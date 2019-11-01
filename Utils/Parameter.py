@@ -1,4 +1,4 @@
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, GroupKFold, KFold
 
 
 # Model Params  ##################################################################
