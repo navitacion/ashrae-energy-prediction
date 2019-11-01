@@ -60,6 +60,57 @@ class Trainer:
 
         return self.models
 
+    def train_by_col(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, div_col, split=None):
+        self.cv = cv
+        self.models = {}
+        self.features = [c for c in df.columns if c not in ['meter_reading']]
+        self.oof = np.zeros(len(df))
+
+        for col in df[div_col].unique().tolist():
+            print(f'{div_col} : {col}')
+            model_list = []
+            temp = df[df[div_col] == col]
+            df_index = temp.index
+            self.y = temp['meter_reading']
+            self.x = temp.drop(['meter_reading'], axis=1)
+            del temp
+            gc.collect()
+
+            if split is None:
+                _cv = cv.split(self.x)
+            else:
+                _cv = cv.split(self.x, self.x[split])
+
+            for i, (trn_idx, val_idx) in enumerate(_cv):
+                print('Fold {} Model Creating...'.format(i + 1))
+                _start = time.time()
+
+                train_data = lgb.Dataset(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx])
+                val_data = lgb.Dataset(self.x.iloc[val_idx], label=self.y.iloc[val_idx], reference=train_data)
+
+                model = lgb.train(params,
+                                  train_data,
+                                  num_boost_round=num_boost_round,
+                                  valid_sets=(train_data, val_data),
+                                  early_stopping_rounds=early_stopping_rounds,
+                                  verbose_eval=verbose)
+
+                self.oof[df_index[val_idx]] = model.predict(self.x.iloc[val_idx], num_iteration=model.best_iteration)
+
+                elapsedtime = time.time() - _start
+                print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
+                print('')
+
+                model_list.append(model)
+                del model
+
+            self.models.update({col: model_list})
+
+        score = np.sqrt(mean_squared_error(self.oof, df['meter_reading']))
+        print('OOF Error: {:.5f}'.format(score))
+
+        return self.models
+
     def predict(self, df, step_size=500):
 
         if 'row_id' in df.columns:
@@ -80,6 +131,38 @@ class Trainer:
         res = np.concatenate(res)
 
         return res
+
+    def predict_by_col(self, df, div_col, step_size=500):
+
+        res = []
+        row_id = []
+
+        for col in df[div_col].unique().tolist():
+            print(f'\n{div_col} : {col}')
+            temp = df[df[div_col] == col]
+            i = 0
+            for j in range(int(np.ceil(temp.shape[0] / step_size))):
+                test_num = len(temp)
+                limit = int(np.floor(test_num / step_size))
+                print("\r" + str(j+1) + "/" + str(limit), end="")
+                sys.stdout.flush()
+
+                _temp = temp.iloc[i:i + step_size]
+                res.append(np.expm1(sum([model.predict(_temp.drop('row_id', axis=1), num_iteration=model.best_iteration)
+                                     for model in self.models[col]]) / self.cv.n_splits))
+                row_id.append(_temp['row_id'].values)
+
+                i += step_size
+
+        res = np.concatenate(res)
+        row_id = np.concatenate(row_id)
+
+        sub = pd.DataFrame({
+            'row_id': row_id,
+            'meter_reading': res
+        })
+
+        return sub
 
     def get_feature_importance(self):
         importance = np.zeros(len(self.features))
