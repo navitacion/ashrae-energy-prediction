@@ -17,7 +17,7 @@ class Trainer:
     def __init__(self):
         pass
 
-    def train(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, split=None):
+    def train(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, split=None, group=None):
         self.y = df['meter_reading']
         self.x = df.drop(['meter_reading'], axis=1)
         self.cv = cv
@@ -25,10 +25,12 @@ class Trainer:
         self.models = []
         self.features = self.x.columns
 
-        if split is None:
-            _cv = cv.split(self.x)
-        else:
+        if split is not None:
             _cv = cv.split(self.x, self.x[split])
+        elif group is not None:
+            _cv = cv.split(self.x, self.y, self.x[group])
+        else:
+            _cv = cv.split(self.x)
 
         for i, (trn_idx, val_idx) in enumerate(_cv):
             print('Fold {} Model Creating...'.format(i + 1))
