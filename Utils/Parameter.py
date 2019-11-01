@@ -24,3 +24,20 @@ g_params = {
     'params': model_params
 }
 
+g_params_by_col = {
+    'cv': KFold(3, shuffle=True, random_state=42),
+    'num_boost_round': 10000,
+    'early_stopping_rounds': 100,
+    'verbose': 1000,
+    'params': model_params
+}
+
+
+g_params_2 = {
+    'cv': GroupKFold(4),
+    'num_boost_round': 6000,
+    'early_stopping_rounds': 100,
+    'verbose': 1000,
+    'group': 'building_id_month',
+    'params': model_params
+}

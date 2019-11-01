@@ -33,7 +33,7 @@ with open(train_data_path, 'rb') as f:
 
 # Model Create  #####################################################################
 model = Trainer()
-_ = model.train(Dataset.df[train_set_cols], **g_params)
+_ = model.train(Dataset.df[train_set_cols], **g_params_2)
 # save models
 with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
     pickle.dump(model, f)
