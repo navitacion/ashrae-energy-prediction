@@ -36,6 +36,13 @@ elapsedtime = time.time() - _start
 print('Train Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
 print('')
 
+del Dataset
+gc.collect()
+
+# Load PKL File
+with open('../input/prep_train_20191101.pkl', 'rb') as f:
+    Dataset = pickle.load(f)
+
 # Memory Clear
 del Dataset.df
 gc.collect()
