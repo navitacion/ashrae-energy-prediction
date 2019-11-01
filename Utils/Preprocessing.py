@@ -200,22 +200,22 @@ def prep_weather_data(df):
                 colname = '{}_roll_{}_mean'.format(c, window)
                 temp[colname] = temp[c].rolling(window).mean()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
-                df[colname] = df[colname].astype(np.float32)
+                df[colname] = df[colname].astype(np.float16)
                 # Sum
                 colname = '{}_roll_{}_sum'.format(c, window)
                 temp[colname] = temp[c].rolling(window).sum()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
-                df[colname] = df[colname].astype(np.float32)
+                df[colname] = df[colname].astype(np.float16)
                 # Max
                 colname = '{}_roll_{}_max'.format(c, window)
                 temp[colname] = temp[c].rolling(window).max()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
-                df[colname] = df[colname].astype(np.float32)
+                df[colname] = df[colname].astype(np.float16)
                 # Min
                 colname = '{}_roll_{}_min'.format(c, window)
                 temp[colname] = temp[c].rolling(window).min()
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
-                df[colname] = df[colname].astype(np.float32)
+                df[colname] = df[colname].astype(np.float16)
 
         # Shift
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
