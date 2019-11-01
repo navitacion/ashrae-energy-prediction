@@ -68,6 +68,19 @@ class PreprocessingDataset:
         self.df['day'] = self.df['timestamp'].dt.day.astype(np.uint8)
         self.df['hour'] = self.df['timestamp'].dt.hour.astype(np.uint8)
         self.df['weekday'] = self.df['timestamp'].dt.weekday.astype(np.uint8)
+
+        # Holiday  #####################################################################
+        dates_range = pd.date_range(start='2015-12-31', end='2019-01-01')
+        us_holidays = calendar().holidays(start=dates_range.min(), end=dates_range.max())
+        self.df['is_holiday'] = (
+            self.df['timestamp'].dt.date.astype('datetime64').isin(us_holidays)).astype(np.int8)
+        self.df.loc[(self.df['weekday'] == 5) | (self.df['weekday'] == 6), 'is_holiday'] = 1
+        del us_holidays
+        gc.collect()
+
+        # Group feature  #####################################################################
+        self.df['building_id_month'] = str(self.df['building_id']) + '_' + str(self.df['month'])
+
         # Sort Timestamp  #####################################################################
         if mode == 'train':
             self.df = self.df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
