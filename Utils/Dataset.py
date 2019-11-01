@@ -88,10 +88,11 @@ class PreprocessingDataset:
         gc.collect()
 
         # LabelEncoder  #####################################################################
-        list_cols = ['primary_use']
+        list_cols = ['primary_use', 'building_id_month']
         if mode == 'train':
             self.ce_oe = ce.OrdinalEncoder(cols=list_cols, handle_unknown='impute')
             self.df = self.ce_oe.fit_transform(self.df)
+
         elif mode == 'test':
             self.df = self.ce_oe.transform(self.df)
 
