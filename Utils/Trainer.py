@@ -108,8 +108,8 @@ class Trainer:
 
             self.models.update({col: model_list})
 
-        score = np.sqrt(mean_squared_error(self.oof, df['meter_reading']))
-        print('OOF Error: {:.5f}'.format(score))
+        self.oof = np.sqrt(mean_squared_error(self.oof, df['meter_reading']))
+        print('OOF Error: {:.5f}'.format(self.oof))
 
         return self.models
 
