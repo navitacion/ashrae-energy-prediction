@@ -10,12 +10,13 @@ import gc
 from sklearn.metrics import mean_squared_error
 
 import lightgbm as lgb
+from catboost import CatBoostRegressor, Pool
 
 
 class Trainer:
 
-    def __init__(self):
-        pass
+    def __init__(self, model_type='lgb'):
+        self.model_type = model_type
 
     def train(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, split=None, group=None):
         self.y = df['meter_reading']
@@ -36,28 +37,45 @@ class Trainer:
             print('Fold {} Model Creating...'.format(i + 1))
             _start = time.time()
 
-            train_data = lgb.Dataset(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx])
-            val_data = lgb.Dataset(self.x.iloc[val_idx], label=self.y.iloc[val_idx], reference=train_data)
+            if self.model_type == 'lgb':
+                train_data = lgb.Dataset(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx])
+                val_data = lgb.Dataset(self.x.iloc[val_idx], label=self.y.iloc[val_idx], reference=train_data)
 
-            model = lgb.train(params,
-                              train_data,
-                              num_boost_round=num_boost_round,
-                              valid_sets=(train_data, val_data),
-                              early_stopping_rounds=early_stopping_rounds,
-                              verbose_eval=verbose)
+                model = lgb.train(params,
+                                  train_data,
+                                  num_boost_round=num_boost_round,
+                                  valid_sets=(train_data, val_data),
+                                  early_stopping_rounds=early_stopping_rounds,
+                                  verbose_eval=verbose)
 
-            y_pred = model.predict(self.x.iloc[val_idx], num_iteration=model.best_iteration)
-            error = np.sqrt(mean_squared_error(y_pred, self.y.iloc[val_idx]))
-            self.oof += error / cv.n_splits
+                y_pred = model.predict(self.x.iloc[val_idx], num_iteration=model.best_iteration)
+                error = np.sqrt(mean_squared_error(y_pred, self.y.iloc[val_idx]))
+                self.oof += error / cv.n_splits
+                self.models.append(model)
 
-            print('Fold {}: {:.5f}'.format(i + 1, error))
+                print('Fold {}: {:.5f}'.format(i + 1, error))
+
+            elif self.model_type == 'cat':
+                cat_features_index = np.where(self.x.df.dtypes == 'category')[0]
+                train_data = Pool(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx], cat_features=cat_features_index)
+                val_data = Pool(self.x.iloc[val_idx], label=self.y.iloc[val_idx], cat_features=cat_features_index)
+                model = CatBoostRegressor(**params.update({'iterations': num_boost_round}))
+                model.fit(train_data,
+                          eval_set=val_data,
+                          use_best_model=True,
+                          early_stopping_rounds=early_stopping_rounds,
+                          verbose=verbose)
+                y_pred = model.predict(self.x.iloc[val_idx])
+                error = np.sqrt(mean_squared_error(y_pred, self.y.iloc[val_idx]))
+                self.oof += error / cv.n_splits
+                self.models.append(model)
+
+                print('Fold {}: {:.5f}'.format(i + 1, error))
 
             elapsedtime = time.time() - _start
             print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
             print('')
 
-            self.models.append(model)
-            del model
         print('OOF Error: {:.5f}'.format(self.oof))
 
         return self.models
@@ -87,24 +105,40 @@ class Trainer:
                 print('Fold {} Model Creating...'.format(i + 1))
                 _start = time.time()
 
-                train_data = lgb.Dataset(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx])
-                val_data = lgb.Dataset(self.x.iloc[val_idx], label=self.y.iloc[val_idx], reference=train_data)
+                if self.model_type == 'lgb':
+                    train_data = lgb.Dataset(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx])
+                    val_data = lgb.Dataset(self.x.iloc[val_idx], label=self.y.iloc[val_idx], reference=train_data)
 
-                model = lgb.train(params,
-                                  train_data,
-                                  num_boost_round=num_boost_round,
-                                  valid_sets=(train_data, val_data),
-                                  early_stopping_rounds=early_stopping_rounds,
-                                  verbose_eval=verbose)
+                    model = lgb.train(params,
+                                      train_data,
+                                      num_boost_round=num_boost_round,
+                                      valid_sets=(train_data, val_data),
+                                      early_stopping_rounds=early_stopping_rounds,
+                                      verbose_eval=verbose)
 
-                self.oof[df_index[val_idx]] = model.predict(self.x.iloc[val_idx], num_iteration=model.best_iteration)
+                    self.oof[df_index[val_idx]] = model.predict(self.x.iloc[val_idx], num_iteration=model.best_iteration)
 
-                elapsedtime = time.time() - _start
-                print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
-                print('')
+                    elapsedtime = time.time() - _start
+                    print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
+                    print('')
 
-                model_list.append(model)
-                del model
+                    model_list.append(model)
+                    del model
+
+                elif self.model_type == 'cat':
+                    cat_features_index = np.where(self.x.df.dtypes == 'category')[0]
+                    train_data = Pool(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx], cat_features=cat_features_index)
+                    val_data = Pool(self.x.iloc[val_idx], label=self.y.iloc[val_idx], cat_features=cat_features_index)
+                    model = CatBoostRegressor(**params.update({'iterations': num_boost_round}))
+                    model.fit(train_data,
+                              eval_set=val_data,
+                              use_best_model=True,
+                              early_stopping_rounds=early_stopping_rounds,
+                              verbose=verbose)
+                    self.oof[df_index[val_idx]] = model.predict(self.x.iloc[val_idx])
+                    elapsedtime = time.time() - _start
+                    print('Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
+                    print('')
 
             self.models.update({col: model_list})
 
@@ -114,20 +148,24 @@ class Trainer:
         return self.models
 
     def predict(self, df, step_size=500):
-
         if 'row_id' in df.columns:
             df.drop('row_id', axis=1, inplace=True)
 
         i = 0
         res = []
         for j in range(int(np.ceil(df.shape[0] / step_size))):
-            test_num = 41697600
-            limit = int(np.floor(test_num / step_size))
+            test_num = len(df)
+            limit = int(np.ceil(test_num / step_size))
             print("\r" + str(j+1) + "/" + str(limit), end="")
             sys.stdout.flush()
-            res.append(np.expm1(sum(
-                [model.predict(df.iloc[i:i + step_size], num_iteration=model.best_iteration) for model in
-                 self.models]) / self.cv.n_splits))
+
+            if self.model_type == 'lgb':
+                res.append(np.expm1(sum(
+                    [model.predict(df.iloc[i:i + step_size], num_iteration=model.best_iteration) for model in
+                     self.models]) / self.cv.n_splits))
+            elif self.model_type == 'cat':
+                res.append(np.expm1(sum(
+                    [model.predict(df.iloc[i:i + step_size]) for model in self.models]) / self.cv.n_splits))
             i += step_size
 
         res = np.concatenate(res)
@@ -145,13 +183,18 @@ class Trainer:
             i = 0
             for j in range(int(np.ceil(temp.shape[0] / step_size))):
                 test_num = len(temp)
-                limit = int(np.floor(test_num / step_size))
+                limit = int(np.ceil(test_num / step_size))
                 print("\r" + str(j+1) + "/" + str(limit), end="")
                 sys.stdout.flush()
 
                 _temp = temp.iloc[i:i + step_size]
-                res.append(np.expm1(sum([model.predict(_temp.drop('row_id', axis=1), num_iteration=model.best_iteration)
-                                     for model in self.models[col]]) / self.cv.n_splits))
+                if self.model_type == 'lgb':
+                    res.append(np.expm1(sum([model.predict(_temp.drop('row_id', axis=1), num_iteration=model.best_iteration)
+                                         for model in self.models[col]]) / self.cv.n_splits))
+                elif self.model_type == 'cat':
+                    res.append(
+                        np.expm1(sum([model.predict(_temp.drop('row_id', axis=1))
+                                      for model in self.models[col]]) / self.cv.n_splits))
                 row_id.append(_temp['row_id'].values)
 
                 i += step_size
@@ -170,7 +213,11 @@ class Trainer:
         importance = np.zeros(len(self.features))
 
         for i in range(len(self.models)):
-            importance += self.models[i].feature_importance() / len(self.models)
+            
+            if self.model_type == 'lgb':
+                importance += self.models[i].feature_importance() / len(self.models)
+            elif self.model_type == 'cat':
+                importance += self.models[i].get_feature_importance() / len(self.models)
 
         importance_df = pd.DataFrame({
             'feature': self.features,

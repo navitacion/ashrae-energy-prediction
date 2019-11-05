@@ -1,6 +1,6 @@
 from sklearn.model_selection import StratifiedKFold, GroupKFold, KFold
 
-
+# LightGBM
 # Model Params  ##################################################################
 model_params = {
     'boosting_type': 'gbdt',
@@ -12,9 +12,7 @@ model_params = {
     'seed': 42
 }
 
-
 # General Params  ##################################################################
-
 g_params = {
     'cv': StratifiedKFold(4, shuffle=True, random_state=42),
     'num_boost_round': 6000,
@@ -40,4 +38,26 @@ g_params_2 = {
     'verbose': 1000,
     'group': 'building_id_month',
     'params': model_params
+}
+
+# CatBoost
+# Model Params  ##################################################################
+model_params_cat = {
+        'learning_rate': 0.1,
+        'eval_metric': 'RMSE',
+        'loss_function': 'RMSE',
+        'random_seed': 42,
+        'metric_period': 10,
+        'task_type': 'GPU',
+        'depth': 8,
+    }
+
+# General Params  ##################################################################
+g_params_cat = {
+    'cv': StratifiedKFold(4, shuffle=True, random_state=42),
+    'num_boost_round': 6000,
+    'early_stopping_rounds': 100,
+    'verbose': 1000,
+    'split': 'building_id',
+    'params': model_params_cat
 }
