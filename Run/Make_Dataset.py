@@ -11,7 +11,9 @@ from Utils.Dataset import PreprocessingDataset
 from Utils.Trainer import Trainer
 from Utils.Parameter import *
 
-today = datetime.datetime.now().strftime('%Y%m%d')
+today = (datetime.datetime.now()).strftime('%Y%m%d')
+cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
+            "month", "meter", 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
 
 
 def set_dtypes(df, cat_cols):
@@ -55,38 +57,55 @@ elapsedtime = time.time() - _start
 print('Train Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
 print('')
 
-del Dataset
+# Check Importance  #####################################################################
+# Model Create
+model = Trainer()
+_ = model.train(Dataset.df.sample(frac=0.04), **g_params)
+
+# Plot Feature Importances
+model.get_feature_importance()
+
+del Dataset, model, _
 gc.collect()
 
+# Prep Test Data  #####################################################################
+# Chunksize Ver.
+
 # Load PKL File
-with open('../input/prep_train_20191101.pkl', 'rb') as f:
+with open(f'../input/prep_train_{today}.pkl', 'rb') as f:
     Dataset = pickle.load(f)
 
 # Memory Clear
 del Dataset.df
 gc.collect()
 
-# Prep Test Data  #####################################################################
+# Create Test Dataset
 print('Test...')
+chunksize = 15000000
 _start = time.time()
-test = pd.read_csv("../input/test.csv")
-df_weather_test = pd.read_csv("../input/weather_test.csv")
-df_building = pd.read_csv("../input/building_metadata.csv")
+test_gen = pd.read_csv("../input/test.csv", chunksize=chunksize)
 
 # Prepare Test Data
-Dataset.prep(test, df_weather_test, df_building, mode='test')
-# Memory Clear
-del test, df_weather_test, df_building
-gc.collect()
-# Save Preprocessed Test Data
-with open(f'../input/prep_test_{today}.pkl', 'wb') as f:
-    pickle.dump(Dataset, f, protocol=4)
+for i, test in enumerate(test_gen):
+    df_weather_test = pd.read_csv("../input/weather_test.csv")
+    df_building = pd.read_csv("../input/building_metadata.csv")
+    test_num = 41697600
+    limit = int(np.ceil(test_num / chunksize))
+    print("\r" + str(i + 1) + "/" + str(limit), end="")
+    sys.stdout.flush()
 
-print('Prep TestData Shape: ', Dataset.df.shape)
+    Dataset.prep(test, df_weather_test, df_building, mode='test')
 
     # Data Type  #####################################################################
     Dataset.df = set_dtypes(Dataset.df, cat_cols)
 
+    # Save Preprocessed Test Data  #####################################################################
+    with open(f'../input/prep_test_{today}_{i}.pkl', 'wb') as f:
+        pickle.dump(Dataset, f, protocol=4)
+
+    # Memory Clear
+    del df_weather_test, df_building
+    gc.collect()
 
 elapsedtime = time.time() - _start
 print('Test Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
