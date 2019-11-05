@@ -13,7 +13,22 @@ from Utils.Parameter import *
 
 today = datetime.datetime.now().strftime('%Y%m%d')
 
-# # Prep Train Data  #####################################################################
+
+def set_dtypes(df, cat_cols):
+    # float16
+    cols = df.select_dtypes(include=[np.float64, np.float32]).columns
+    for c in cols:
+        df[c] = df[c].astype(np.float16)
+    # category
+    for c in cat_cols:
+        try:
+            df[c] = df[c].astype('category')
+        except:
+            pass
+
+    return df
+
+# Prep Train Data  #####################################################################
 print('Train...')
 _start = time.time()
 train = pd.read_csv("../input/train.csv")
@@ -23,6 +38,10 @@ df_building = pd.read_csv("../input/building_metadata.csv")
 # Prepare Train Data
 Dataset = PreprocessingDataset()
 Dataset.prep(train, df_weather_train, df_building, mode='train')
+
+# Data Type  #####################################################################
+Dataset.df = set_dtypes(Dataset.df, cat_cols)
+
 # Memory Clear
 del train, df_weather_train, df_building
 gc.collect()
@@ -64,6 +83,10 @@ with open(f'../input/prep_test_{today}.pkl', 'wb') as f:
     pickle.dump(Dataset, f, protocol=4)
 
 print('Prep TestData Shape: ', Dataset.df.shape)
+
+    # Data Type  #####################################################################
+    Dataset.df = set_dtypes(Dataset.df, cat_cols)
+
 
 elapsedtime = time.time() - _start
 print('Test Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
