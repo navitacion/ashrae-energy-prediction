@@ -125,6 +125,12 @@ def prep_core_data(df):
             drop_rows = temp.query("shifted_past == 0 & shifted_future == 0 & meter_reading > 0")
             df.loc[drop_rows.index, 'meter_reading'] = np.nan
 
+            # Smoothing
+            upper = np.percentile(temp['meter_reading'], 99)
+            lower = np.percentile(temp['meter_reading'], 1)
+            temp.loc[temp['meter_reading'] > upper, 'meter_reading'] = np.nan
+            temp.loc[temp['meter_reading'] < lower, 'meter_reading'] = np.nan
+
             # Date of meter_reading == 0 deals as NaN
             temp.loc[temp['meter_reading'] == 0, 'meter_reading'] = np.nan
             # Use Interpolation for Filling NaN
@@ -133,9 +139,6 @@ def prep_core_data(df):
 
     del temp
     gc.collect()
-
-    # Dropna    ####################################################################
-    df.dropna(inplace=True)
 
     return df
 
@@ -174,21 +177,13 @@ def prep_weather_data(df):
         _df['timestamp_aligned'] = (pd.to_datetime(_df.timestamp) - pd.to_timedelta(_df.offset, unit='H'))
         _df['timestamp'] = _df['timestamp_aligned']
         _df['timestamp'] = _df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-        del _df['timestamp_aligned']
+        del _df['timestamp_aligned'], _df['offset']
         return _df
 
     df = timestamp_align(df)
 
     del weather, df_2d, temp_skeleton, site_ids_offsets
     gc.collect()
-
-    # UTC_offset = [-4, 0, -7, -4, -7, 0, -4, -4, -4, -5, -7, -4, 0, -5, -4, -4]
-    
-    # for i in range(16):
-    #     temp = df[df['site_id'] == i]
-    #     temp['timestamp'] = pd.to_datetime(temp['timestamp']) + datetime.timedelta(hours=UTC_offset[i])
-    #     temp['timestamp'] = temp['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-    #     df.loc[temp.index, 'timestamp'] = temp.loc[temp.index, 'timestamp']
 
     # Create Features per Site Id  #####################################################################
     # Fillna(Interpolate)
@@ -202,8 +197,8 @@ def prep_weather_data(df):
             temp[c] = temp[c].interpolate(limit_direction='both')
             df.loc[temp.index, c] = temp.loc[temp.index, c]
 
-    del temp
-    gc.collect()
+        del temp
+        gc.collect()
 
     # relative Hummd  #####################################################################
     # https://soudan1.biglobe.ne.jp/qa5356721.html
@@ -222,6 +217,7 @@ def prep_weather_data(df):
 
     # Wind Direction  #####################################################################
     df.loc[df['wind_direction'] == 65535, 'wind_direction'] = np.nan
+    df.loc[df['wind_direction'] == 360, 'wind_direction'] = 0
     df['wind_direction'] = np.radians(df['wind_direction'])
     df['wind_direction_sin'] = np.sin(df['wind_direction'])
     df['wind_direction_cos'] = np.cos(df['wind_direction'])
@@ -232,6 +228,15 @@ def prep_weather_data(df):
     for c in ['wind_speed_sin', 'wind_speed_cos']:
         df[c] = df[c].astype(np.float16)
 
+
+    # beaufort_scale  #####################################################################
+    beaufort = [(0, 0, 0.3), (1, 0.3, 1.6), (2, 1.6, 3.4), (3, 3.4, 5.5), (4, 5.5, 8), (5, 8, 10.8), (6, 10.8, 13.9),
+                (7, 13.9, 17.2), (8, 17.2, 20.8), (9, 20.8, 24.5), (10, 24.5, 28.5), (11, 28.5, 33), (12, 33, 200)]
+
+    for item in beaufort:
+        df.loc[(df['wind_speed'] >= item[1]) & (df['wind_speed'] < item[2]), 'beaufort_scale'] = item[0]
+    df['beaufort_scale'] = df['beaufort_scale'].astype(np.uint8)
+
     # Create Features per Site Id  #####################################################################
     for i in range(df['site_id'].nunique()):
         temp = df[df['site_id'] == i]
@@ -239,7 +244,7 @@ def prep_weather_data(df):
         # Rolling
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd']
         for c in cols:
-            for window in [3, 72]:
+            for window in [24, 48, 72, 96]:
                 # Mean
                 colname = '{}_roll_{}_mean'.format(c, window)
                 temp[colname] = temp[c].rolling(window).mean()
@@ -264,15 +269,15 @@ def prep_weather_data(df):
         # Shift
         cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
         for c in cols:
-            for period in [1, 24]:
+            for period in [24, 48, 72, 96]:
                 colname = '{}_shift_{}'.format(c, period)
                 shifted = temp[c].shift(periods=period)
                 temp[colname] = temp[c] - shifted
                 df.loc[temp.index, colname] = temp.loc[temp.index, colname]
                 df[colname] = df[colname].astype(np.float16)
 
-    del temp
-    gc.collect()
+        del temp
+        gc.collect()
 
     return df
 
