@@ -21,7 +21,7 @@ today = datetime.datetime.now().strftime('%Y%m%d')
 
 # Load Pkl File  #####################################################################
 print('Check Feature Importance...')
-with open('../input/prep_train.pkl', 'rb') as f:
+with open('../input/prep_train_20191103.pkl', 'rb') as f:
     Dataset = pickle.load(f)
 
 # Sampling

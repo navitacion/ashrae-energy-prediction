@@ -19,19 +19,6 @@ class PreprocessingDataset:
         if mode == 'train':
             df = prep_core_data(df)
 
-            df_group = df.groupby('building_id')['meter_reading']
-            self.building_mean = df_group.mean().astype(np.float16)
-            self.building_median = df_group.median().astype(np.float16)
-            self.building_min = df_group.min().astype(np.float16)
-            self.building_max = df_group.max().astype(np.float16)
-            self.building_std = df_group.std().astype(np.float16)
-
-        df['building_mean'] = df['building_id'].map(self.building_mean)
-        df['building_median'] = df['building_id'].map(self.building_median)
-        df['building_min'] = df['building_id'].map(self.building_min)
-        df['building_max'] = df['building_id'].map(self.building_max)
-        df['building_std'] = df['building_id'].map(self.building_std)
-
         # Weather Data Prep  #####################################################################
         df_weather = prep_weather_data(df_weather)
 
@@ -47,20 +34,20 @@ class PreprocessingDataset:
         del df, df_weather
         gc.collect()
 
-        # primary_use  #####################################################################
+        # TargetEncoding  #####################################################################
         if mode == 'train':
-            df_group = self.df.groupby('primary_use')['meter_reading']
-            self.primary_use_mean = df_group.mean().astype(np.float16)
-            self.primary_use_median = df_group.median().astype(np.float16)
-            self.primary_use_min = df_group.min().astype(np.float16)
-            self.primary_use_max = df_group.max().astype(np.float16)
-            self.primary_use_std = df_group.std().astype(np.float16)
+            df_group = df.groupby('building_id')['meter_reading']
+            self.building_mean = df_group.mean().astype(np.float16)
+            self.building_median = df_group.median().astype(np.float16)
+            self.building_min = df_group.min().astype(np.float16)
+            self.building_max = df_group.max().astype(np.float16)
+            self.building_std = df_group.std().astype(np.float16)
 
-        self.df['primary_use_mean'] = self.df['primary_use'].map(self.primary_use_mean)
-        self.df['primary_use_median'] = self.df['primary_use'].map(self.primary_use_median)
-        self.df['primary_use_min'] = self.df['primary_use'].map(self.primary_use_min)
-        self.df['primary_use_max'] = self.df['primary_use'].map(self.primary_use_max)
-        self.df['primary_use_std'] = self.df['primary_use'].map(self.primary_use_std)
+        self.df['building_mean'] = self.df['building_id'].map(self.building_mean)
+        self.df['building_median'] = self.df['building_id'].map(self.building_median)
+        self.df['building_min'] = self.df['building_id'].map(self.building_min)
+        self.df['building_max'] = self.df['building_id'].map(self.building_max)
+        self.df['building_std'] = self.df['building_id'].map(self.building_std)
 
         # Datetime  #####################################################################
         self.df['timestamp'] = pd.to_datetime(self.df['timestamp'])
@@ -79,7 +66,21 @@ class PreprocessingDataset:
         gc.collect()
 
         # Group feature  #####################################################################
-        self.df['building_id_month'] = str(self.df['building_id']) + '_' + str(self.df['month'])
+        self.df['building_id_month'] = self.df['building_id'].astype(str) + '_' + self.df['month'].astype(str)
+        self.df['building_id_meter_month'] = self.df['building_id'].astype(str) + '_' + \
+                                             self.df['meter'].astype(str) + '_' + \
+                                             self.df['month'].astype(str)
+
+        self.df['building_id_meter_month_use'] = self.df['building_id'].astype(str) + '_' + \
+                                             self.df['meter'].astype(str) + '_' + \
+                                             self.df['month'].astype(str) + '_' + self.df['primary_use'].astype(str)
+
+        # Frequency Encoding  #####################################################################
+        cols = ['building_id', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+        for col in cols:
+            fq_encode = self.df[col].value_counts().to_dict()
+            self.df[col + '_fq_enc'] = self.df[col].map(fq_encode)
+            self.df[col + '_fq_enc'] = self.df[col + '_fq_enc'].astype(np.float16)
 
         # Sort Timestamp  #####################################################################
         if mode == 'train':
@@ -88,7 +89,7 @@ class PreprocessingDataset:
         gc.collect()
 
         # LabelEncoder  #####################################################################
-        list_cols = ['primary_use', 'building_id_month']
+        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
         if mode == 'train':
             self.ce_oe = ce.OrdinalEncoder(cols=list_cols, handle_unknown='impute')
             self.df = self.ce_oe.fit_transform(self.df)
@@ -96,16 +97,6 @@ class PreprocessingDataset:
         elif mode == 'test':
             self.df = self.ce_oe.transform(self.df)
 
-        # Data Type  #####################################################################
-        # float32
-        cols = self.df.select_dtypes(np.float64).columns
-        for c in cols:
-            self.df[c] = self.df[c].astype(np.float32)
-        # category
-        cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday", "month", "meter"]
-        for c in cols:
-            self.df[c] = self.df[c].astype('category')
-
-        # sort row_id  #####################################################################
-        if mode == 'test':
-            self.df = self.df.sort_values(by='row_id').reset_index(drop=True)
+        # Dropna    ####################################################################
+        if mode == 'train':
+            self.df.dropna(inplace=True)
