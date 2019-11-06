@@ -54,12 +54,13 @@ print('Prediction...')
 id_ = []
 pred = []
 
-for testpath in glob.glob(test_data_path):
+for i, testpath in enumerate(glob.glob(test_data_path)):
     with open(testpath, 'rb') as f:
         Dataset = pickle.load(f)
 
     id_.append(Dataset.df['row_id'].values)
     # Predict
+    print(f'\n{i}')
     pred.append(model.predict(Dataset.df[set_cols], step_size=chunk_size))
 
     del Dataset

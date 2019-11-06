@@ -36,7 +36,7 @@ class PreprocessingDataset:
 
         # TargetEncoding  #####################################################################
         if mode == 'train':
-            df_group = df.groupby('building_id')['meter_reading']
+            df_group = self.df.groupby('building_id')['meter_reading']
             self.building_mean = df_group.mean().astype(np.float16)
             self.building_median = df_group.median().astype(np.float16)
             self.building_min = df_group.min().astype(np.float16)
