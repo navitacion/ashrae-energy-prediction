@@ -56,10 +56,11 @@ class Trainer:
                 print('Fold {}: {:.5f}'.format(i + 1, error))
 
             elif self.model_type == 'cat':
-                cat_features_index = np.where(self.x.df.dtypes == 'category')[0]
+                cat_features_index = np.where(self.x.dtypes == 'category')[0]
                 train_data = Pool(self.x.iloc[trn_idx], label=self.y.iloc[trn_idx], cat_features=cat_features_index)
                 val_data = Pool(self.x.iloc[val_idx], label=self.y.iloc[val_idx], cat_features=cat_features_index)
-                model = CatBoostRegressor(**params.update({'iterations': num_boost_round}))
+                params['iterations'] = num_boost_round
+                model = CatBoostRegressor(**params)
                 model.fit(train_data,
                           eval_set=val_data,
                           use_best_model=True,
