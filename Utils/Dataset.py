@@ -84,9 +84,29 @@ class PreprocessingDataset:
 
         # Sort Timestamp  #####################################################################
         if mode == 'train':
-            self.df = self.df.sort_values(by='timestamp', ascending=True).reset_index(drop=True)
+            self.df.sort_values(by='timestamp', ascending=True, inplace=True)
+            self.df.reset_index(drop=True, inplace=True)
         del self.df['timestamp']
         gc.collect()
+
+        # Set_Dtypes  #####################################################################
+        def set_dtypes(df, cat_cols):
+            # float16
+            cols = df.select_dtypes(include=[np.float64]).columns
+            for c in cols:
+                df[c] = df[c].astype(np.float32)
+            # category
+            for c in cat_cols:
+                try:
+                    df[c] = df[c].astype('category')
+                except:
+                    pass
+
+            return df
+
+        cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
+                    "month", "meter", 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+        self.df = set_dtypes(self.df, cat_cols)
 
         # LabelEncoder  #####################################################################
         list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']

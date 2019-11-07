@@ -72,6 +72,8 @@ def prep_core_data(df):
         for meter in range(4):
             temp = extract_id_meter(df, id_, meter)
             rows = temp.shape[0]
+            del temp
+            gc.collect()
             if rows not in [0, 8784]:
                 id_list.append(id_)
                 meter_list.append(meter)
@@ -100,13 +102,15 @@ def prep_core_data(df):
 
         temp = temp[temp['meter_reading'].isnull()]
         _df = pd.concat([_df, temp], axis=0, ignore_index=True, sort=True)
+        del temp
+        gc.collect()
 
         return _df
 
     for _id, meter in zip(df_loss['building_id'], df_loss['meter']):
         df = fill_date(df, _id, meter)
 
-    del df_loss, temp
+    del df_loss
     gc.collect()
 
     # Interpolate    ####################################################################
@@ -137,8 +141,11 @@ def prep_core_data(df):
             temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=5)
             df.loc[temp.index, 'meter_reading'] = temp.loc[temp.index, 'meter_reading']
 
-    del temp
-    gc.collect()
+            del temp
+            gc.collect()
+
+    # Dropna  ####################################################################
+    df.dropna(subset=['meter_reading'], inplace=True)
 
     return df
 
@@ -150,8 +157,9 @@ def prep_weather_data(df):
     df.drop(drop_col, axis=1, inplace=True)
     
     # Modify Timestamp  #####################################################################
-    a = pd.read_csv('../input/weather_train.csv', parse_dates=['timestamp'])
-    b = pd.read_csv('../input/weather_test.csv', parse_dates=['timestamp'])
+    cols = ['timestamp', 'site_id', 'air_temperature']
+    a = pd.read_csv('../input/weather_train.csv', parse_dates=['timestamp'], usecols=cols)
+    b = pd.read_csv('../input/weather_test.csv', parse_dates=['timestamp'], usecols=cols)
 
     weather = pd.concat([a, b], ignore_index=True)
     del a, b
