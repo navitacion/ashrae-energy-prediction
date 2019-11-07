@@ -5,6 +5,7 @@ import time
 import sys
 import gc
 import pickle
+import glob
 from tqdm import tqdm
 
 from Utils.Dataset import PreprocessingDataset
@@ -15,12 +16,22 @@ today = (datetime.datetime.now()).strftime('%Y%m%d')
 cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
             "month", "meter", 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
 
+read_dtypes = {
+    'meter': 'uint8',
+    'meter_reading': 'float32'
+}
+
+read_dtypes_weather = {
+    'air_temperature': 'float32',
+    'dew_temperature': 'float32',
+    'wind_speed': 'float32'
+}
 
 def set_dtypes(df, cat_cols):
     # float16
-    cols = df.select_dtypes(include=[np.float64, np.float32]).columns
+    cols = df.select_dtypes(include=[np.float64]).columns
     for c in cols:
-        df[c] = df[c].astype(np.float16)
+        df[c] = df[c].astype(np.float32)
     # category
     for c in cat_cols:
         try:
@@ -33,8 +44,8 @@ def set_dtypes(df, cat_cols):
 # Prep Train Data  #####################################################################
 print('Train...')
 _start = time.time()
-train = pd.read_csv("../input/train.csv")
-df_weather_train = pd.read_csv("../input/weather_train.csv")
+train = pd.read_csv("../input/train.csv", dtype=read_dtypes)
+df_weather_train = pd.read_csv("../input/weather_train.csv", dtype=read_dtypes_weather)
 df_building = pd.read_csv("../input/building_metadata.csv")
 
 # Prepare Train Data
@@ -79,15 +90,15 @@ with open(f'../input/prep_train_{today}.pkl', 'rb') as f:
 del Dataset.df
 gc.collect()
 
-# Create Test Dataset
+# Create Test Dataset  #####################################################################
 print('Test...')
 chunksize = 15000000
 _start = time.time()
-test_gen = pd.read_csv("../input/test.csv", chunksize=chunksize)
+test_gen = pd.read_csv("../input/test.csv", chunksize=chunksize, dtype=read_dtypes)
 
 # Prepare Test Data
 for i, test in enumerate(test_gen):
-    df_weather_test = pd.read_csv("../input/weather_test.csv")
+    df_weather_test = pd.read_csv("../input/weather_test.csv", dtype=read_dtypes_weather)
     df_building = pd.read_csv("../input/building_metadata.csv")
     test_num = 41697600
     limit = int(np.ceil(test_num / chunksize))

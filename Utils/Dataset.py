@@ -37,11 +37,11 @@ class PreprocessingDataset:
         # TargetEncoding  #####################################################################
         if mode == 'train':
             df_group = self.df.groupby('building_id')['meter_reading']
-            self.building_mean = df_group.mean().astype(np.float16)
-            self.building_median = df_group.median().astype(np.float16)
-            self.building_min = df_group.min().astype(np.float16)
-            self.building_max = df_group.max().astype(np.float16)
-            self.building_std = df_group.std().astype(np.float16)
+            self.building_mean = df_group.mean().astype(np.float32)
+            self.building_median = df_group.median().astype(np.float32)
+            self.building_min = df_group.min().astype(np.float32)
+            self.building_max = df_group.max().astype(np.float32)
+            self.building_std = df_group.std().astype(np.float32)
 
         self.df['building_mean'] = self.df['building_id'].map(self.building_mean)
         self.df['building_median'] = self.df['building_id'].map(self.building_median)
@@ -96,7 +96,3 @@ class PreprocessingDataset:
 
         elif mode == 'test':
             self.df = self.ce_oe.transform(self.df)
-
-        # Dropna    ####################################################################
-        if mode == 'train':
-            self.df.dropna(inplace=True)
