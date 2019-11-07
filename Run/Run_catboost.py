@@ -18,7 +18,7 @@ _start = time.time()
 chunk_size = 500000
 today = datetime.datetime.now().strftime('%Y%m%d')
 use_col_nums = 40
-params = g_params
+params = g_params_cat
 
 train_data_path = '../input/prep_train_20191107.pkl'
 test_data_path = '../input/prep_test_20191107_*.pkl'
@@ -26,11 +26,6 @@ feature_importance_list_path = '../Importance/importance_20191107.csv'
 
 # Prep Train Data  #####################################################################
 set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
-
-# Delete specific columns
-drop_cols = ['building_id_meter_month', 'building_id_month', 'building_id_meter_month_use']
-set_cols = [c for c in set_cols if c not in drop_cols]
-
 train_set_cols = set_cols + ['meter_reading']
 
 # Load Pkl File  #####################################################################
@@ -40,10 +35,10 @@ with open(train_data_path, 'rb') as f:
 
 
 # Model Create  #####################################################################
-model = Trainer(model_type='lgb')
+model = Trainer(model_type='cat')
 _ = model.train(Dataset.df[train_set_cols], **params)
 # save models
-with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
+with open(f'../Model/cat_models_{today}.pkl', 'wb') as f:
     pickle.dump(model, f)
 
 # Prediction  #####################################################################
