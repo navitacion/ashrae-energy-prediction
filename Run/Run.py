@@ -15,40 +15,33 @@ from Utils.Parameter import *
 
 # Config  #####################################################################
 _start = time.time()
-chunk_size = 200000
+chunk_size = 500000
 today = datetime.datetime.now().strftime('%Y%m%d')
-use_col_nums = 40
+use_col_nums = 60
 params = g_params
 
-train_data_path = '../input/prep_train_20191105.pkl'
-test_data_path = '../input/prep_test_20191105_*.pkl'
-feature_importance_list_path = '../Importance/importance_20191105.csv'
+train_data_path = '../input/prep_train_20191107.pkl'
+test_data_path = '../input/prep_test_20191107_*.pkl'
+feature_importance_list_path = '../Importance/importance_20191107.csv'
 
 # Prep Train Data  #####################################################################
 set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
 train_set_cols = set_cols + ['meter_reading']
 
 # Load Pkl File  #####################################################################
-# print('Create Model...')
-# with open(train_data_path, 'rb') as f:
-#     Dataset = pickle.load(f)
-#
-# Dataset.df['building_id_month'] = Dataset.df['building_id_month'].astype('category')
+print('Create Model...')
+with open(train_data_path, 'rb') as f:
+    Dataset = pickle.load(f)
+
 
 # Model Create  #####################################################################
-# model = Trainer()
-# _ = model.train(Dataset.df[train_set_cols], **params)
-# # save models
-# with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
-#     pickle.dump(model, f)
+model = Trainer(model_type='lgb')
+_ = model.train(Dataset.df[train_set_cols], **params)
+# save models
+with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
+    pickle.dump(model, f)
 
 # Prediction  #####################################################################
-
-with open(f'../Model/lgb_models_{today}.pkl', 'rb') as f:
-    model = pickle.load(f)
-
-model.model_type = 'lgb'
-
 # Load Pkl File  #####################################################################
 print('Prediction...')
 id_ = []
