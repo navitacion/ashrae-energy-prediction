@@ -200,10 +200,12 @@ def prep_weather_data(df):
         temp = temp.sort_values(by='timestamp')
 
         # Interpolation
+        # mixed Linear & Cubic Method  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/116012#latest-667255
         cols = ['air_temperature', 'dew_temperature', 'wind_direction', 'wind_speed']
         for c in cols:
-            temp[c] = temp[c].interpolate(limit_direction='both')
-            df.loc[temp.index, c] = temp.loc[temp.index, c]
+            temp[c + '_linear'] = temp[c].interpolate(method='linear', limit_direction='both')
+            temp[c + '_cubic'] = temp[c].interpolate(method='polynomial', order=3, limit_direction='both')
+            df.loc[temp.index, c] = 0.5 * temp.loc[temp.index, c + '_linear'] + 0.5 * temp.loc[temp.index, c + '_cubic']
 
         del temp
         gc.collect()
@@ -308,6 +310,7 @@ def prep_datetime_features(df):
     df['month'] = df['timestamp'].dt.month.astype(np.uint8)
     df['day'] = df['timestamp'].dt.day.astype(np.uint8)
     df['hour'] = df['timestamp'].dt.hour.astype(np.uint8)
+    df['dayofweek'] = df['timestamp'].dt.dayofweek.astype(np.uint8)
     df['weekday'] = df['timestamp'].dt.weekday.astype(np.uint8)
     df['weekend'] = 0
     df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'weekend'] = 1
