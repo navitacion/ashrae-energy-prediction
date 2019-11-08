@@ -14,7 +14,7 @@ from Utils.Parameter import *
 
 today = (datetime.datetime.now()).strftime('%Y%m%d')
 cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
-            "month", "meter", 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+            "month", "meter", 'building_id_month', 'building_id_meter_month']
 
 read_dtypes = {
     'meter': 'uint8',
@@ -48,12 +48,14 @@ train = pd.read_csv("../input/train.csv", dtype=read_dtypes)
 df_weather_train = pd.read_csv("../input/weather_train.csv", dtype=read_dtypes_weather)
 df_building = pd.read_csv("../input/building_metadata.csv")
 
+train = train.sample(frac=0.01)
+
 # Prepare Train Data
 Dataset = PreprocessingDataset()
 Dataset.prep(train, df_weather_train, df_building, mode='train')
 
 # Data Type  #####################################################################
-Dataset.df = set_dtypes(Dataset.df, cat_cols)
+# Dataset.df = set_dtypes(Dataset.df, cat_cols)
 
 # Memory Clear
 del train, df_weather_train, df_building

@@ -30,7 +30,7 @@ class PreprocessingDataset:
         del df_building
         gc.collect()
         df = pd.merge(df, df_weather, how='left', on=["site_id", "timestamp"])
-        self.df, _ = reduce_mem_usage(df)
+        self.df = reduce_mem_usage(df)
         del df, df_weather
         gc.collect()
 
@@ -59,7 +59,7 @@ class PreprocessingDataset:
         self.df['building_max'] = self.df['building_id'].map(self.building_max)
         self.df['building_std'] = self.df['building_id'].map(self.building_std)
 
-        self.df, _ = reduce_mem_usage(self.df)
+        self.df = reduce_mem_usage(self.df)
 
         # # Datetime  #####################################################################
         # self.df['timestamp'] = pd.to_datetime(self.df['timestamp'])
@@ -83,18 +83,54 @@ class PreprocessingDataset:
                                              self.df['meter'].astype(str) + '_' + \
                                              self.df['month'].astype(str)
 
-        self.df['building_id_meter_month_use'] = self.df['building_id'].astype(str) + '_' + \
-                                             self.df['meter'].astype(str) + '_' + \
-                                             self.df['month'].astype(str) + '_' + self.df['primary_use'].astype(str)
-
         # Frequency Encoding  #####################################################################
-        cols = ['building_id', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+        cols = ['building_id', 'building_id_month', 'building_id_meter_month']
         for col in cols:
             fq_encode = self.df[col].value_counts().to_dict()
             self.df[col + '_fq_enc'] = self.df[col].map(fq_encode)
-            self.df[col + '_fq_enc'] = self.df[col + '_fq_enc'].astype(np.float16)
+            self.df[col + '_fq_enc'] = self.df[col + '_fq_enc'].astype(np.float32)
 
-        self.df, _ = reduce_mem_usage(self.df)
+        self.df = reduce_mem_usage(self.df)
+
+        # LabelEncoder  #####################################################################
+        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month']
+        temp = self.df[list_cols]
+        if mode == 'train':
+            self.ce_oe = ce.OrdinalEncoder(cols=list_cols, handle_unknown='impute')
+            temp = self.ce_oe.fit_transform(temp)
+            temp = temp.astype('float32')
+            temp.columns = [s + '_LE' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
+
+        elif mode == 'test':
+            self.df = self.ce_oe.transform(temp)
+            temp = temp.astype('float32')
+            temp.columns = [s + '_LE' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
+
+        # CatBoostEncoder  #####################################################################
+        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month']
+        temp = self.df[list_cols]
+        if mode == 'train':
+            self.ce_cat = ce.CatBoostEncoder(cols=list_cols, handle_unknown='impute')
+            temp = self.ce_cat.fit_transform(temp, self.df['meter_reading'])
+            temp = temp.astype('float32')
+            temp.columns = [s + '_CB_enc' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
+
+        elif mode == 'test':
+            self.df = self.ce_cat.transform(temp)
+            temp = temp.astype('float32')
+            temp.columns = [s + '_CB_enc' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
 
         # Set_Dtypes  #####################################################################
         def set_dtypes(df, cat_cols):
@@ -112,49 +148,5 @@ class PreprocessingDataset:
             return df
 
         cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
-                    "month", "meter", 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+                    "month", "meter", 'building_id_month', 'building_id_meter_month']
         self.df = set_dtypes(self.df, cat_cols)
-
-        # LabelEncoder  #####################################################################
-        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
-        temp = self.df[list_cols]
-        if mode == 'train':
-            self.ce_oe = ce.OrdinalEncoder(handle_unknown='impute')
-            temp = self.ce_oe.fit_transform(temp)
-            temp = temp.astype('float32')
-            temp.columns = [s + '_LE' for s in list_cols]
-            self.df = pd.concat([self.df, temp], axis=1)
-            del temp
-            gc.collect()
-
-        elif mode == 'test':
-            self.df = self.ce_oe.transform(temp)
-            temp = temp.astype('float32')
-            temp.columns = [s + '_LE' for s in list_cols]
-            self.df = pd.concat([self.df, temp], axis=1)
-            del temp
-            gc.collect()
-
-        self.df, _ = reduce_mem_usage(self.df)
-
-        # CatBoostEncoder  #####################################################################
-        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
-        temp = self.df[list_cols]
-        if mode == 'train':
-            self.ce_cat = ce.CatBoostEncoder(handle_unknown='impute')
-            temp = self.ce_cat.fit_transform(temp, self.df['meter_reading'])
-            temp = temp.astype('float32')
-            temp.columns = [s + '_CB_enc' for s in list_cols]
-            self.df = pd.concat([self.df, temp], axis=1)
-            del temp
-            gc.collect()
-
-        elif mode == 'test':
-            self.df = self.ce_cat.transform(temp)
-            temp = temp.astype('float32')
-            temp.columns = [s + '_CB_enc' for s in list_cols]
-            self.df = pd.concat([self.df, temp], axis=1)
-            del temp
-            gc.collect()
-
-        self.df, _ = reduce_mem_usage(self.df)

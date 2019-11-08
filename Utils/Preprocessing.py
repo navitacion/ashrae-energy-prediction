@@ -7,7 +7,6 @@ from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
 
 # Based on this great kernel https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
 def reduce_mem_usage(df):
-    start_mem_usg = df.memory_usage().sum() / 1024 ** 2
     NAlist = []  # Keeps track of columns that have missing values filled in.
     for col in df.columns:
         if df[col].dtype != object:  # Exclude strings
@@ -50,7 +49,7 @@ def reduce_mem_usage(df):
             else:
                 df[col] = df[col].astype(np.float32)
 
-    return df, NAlist
+    return df
 
 
 def extract_id_meter(df, building_id, meter):

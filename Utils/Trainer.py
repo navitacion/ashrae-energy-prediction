@@ -149,8 +149,8 @@ class Trainer:
         return self.models
 
     def predict(self, df, step_size=500):
-        if 'row_id' in df.columns:
-            df.drop('row_id', axis=1, inplace=True)
+
+        df.drop('row_id', axis=1, inplace=True)
 
         i = 0
         res = []
