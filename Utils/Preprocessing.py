@@ -138,7 +138,7 @@ def prep_core_data(df):
             # Date of meter_reading == 0 deals as NaN
             temp.loc[temp['meter_reading'] == 0, 'meter_reading'] = np.nan
             # Use Interpolation for Filling NaN
-            temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=5)
+            temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=3)
             df.loc[temp.index, 'meter_reading'] = temp.loc[temp.index, 'meter_reading']
 
             del temp
@@ -219,7 +219,8 @@ def prep_weather_data(df):
         for c in cols:
             temp[c + '_linear'] = temp[c].interpolate(method='linear', limit_direction='both')
             temp[c + '_cubic'] = temp[c].interpolate(method='polynomial', order=3, limit_direction='both')
-            df.loc[temp.index, c] = 0.5 * temp.loc[temp.index, c + '_linear'] + 0.5 * temp.loc[temp.index, c + '_cubic']
+            temp[c] = (temp[c + '_linear'] + temp[c + '_cubic']) / 2
+            df.loc[temp.index, c] = temp.loc[temp.index, c]
 
         del temp
         gc.collect()
