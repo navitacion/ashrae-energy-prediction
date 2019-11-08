@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import gc
+from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
 
 
 # Based on this great kernel https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
@@ -297,5 +298,29 @@ def prep_building_data(df):
 
     # square_feet  #####################################################################
     df['square_feet'] = np.log(df['square_feet'])
+
+    return df
+
+
+# Preprocessing Datetime Feature
+def prep_datetime_features(df):
+    # Datetime  #####################################################################
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['month'] = df['timestamp'].dt.month.astype(np.uint8)
+    df['day'] = df['timestamp'].dt.day.astype(np.uint8)
+    df['hour'] = df['timestamp'].dt.hour.astype(np.uint8)
+    df['weekday'] = df['timestamp'].dt.weekday.astype(np.uint8)
+    df['weekend'] = 0
+    df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'weekend'] = 1
+    df['weekend'] = df['weekend'].astype(np.uint8)
+
+    # Holiday  #####################################################################
+    dates_range = pd.date_range(start='2015-12-31', end='2019-01-01')
+    us_holidays = calendar().holidays(start=dates_range.min(), end=dates_range.max())
+    df['is_holiday'] = (
+        df['timestamp'].dt.date.astype('datetime64').isin(us_holidays)).astype(np.int8)
+    df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'is_holiday'] = 1
+    del us_holidays
+    gc.collect()
 
     return df
