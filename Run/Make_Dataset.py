@@ -12,6 +12,8 @@ from Utils.Dataset import PreprocessingDataset
 from Utils.Trainer import Trainer
 from Utils.Parameter import *
 
+pd.set_option('max_rows', 9999)
+
 today = (datetime.datetime.now()).strftime('%Y%m%d')
 cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
             "month", "meter", 'building_id_month', 'building_id_meter_month']
@@ -73,7 +75,7 @@ print('')
 # Check Importance  #####################################################################
 # Model Create
 model = Trainer()
-_ = model.train(Dataset.df.sample(frac=0.04), **g_params)
+_ = model.train(Dataset.df.sample(frac=0.05), **g_params)
 
 # Plot Feature Importances
 model.get_feature_importance()

@@ -4,6 +4,8 @@ import datetime
 import gc
 from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
 
+pd.set_option('max_rows', 9999)
+
 
 # Based on this great kernel https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
 def reduce_mem_usage(df):
@@ -156,6 +158,25 @@ def prep_weather_data(df):
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
 
+
+    # Fill Lossed Date
+    dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
+    dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
+
+    for i in range(16):
+        temp = df[df['site_id'] == i]
+        temp = pd.merge(temp, dates_DF, how="outer", left_on=['timestamp'], right_on=['Date'])
+        del temp['timestamp']
+        temp = temp.rename(columns={'Date': 'timestamp'})
+        temp['site_id'] = i
+        df = pd.concat([df, temp], axis=0, ignore_index=True, sort=True)
+        df.drop_duplicates(inplace=True)
+        del temp
+        gc.collect()
+
+    del dates_DF
+    gc.collect()
+
     # Convert GMT  #####################################################################
     # reference  https://www.kaggle.com/patrick0302/locate-cities-according-weather-temperature
     GMT_converter = {0: 4, 1: 0, 2: 7, 3: 4, 4: 7, 5: 0, 6: 4, 7: 4, 8: 4, 9: 5, 10: 7, 11: 4, 12: 0, 13: 5, 14: 4, 15: 4}
@@ -170,6 +191,8 @@ def prep_weather_data(df):
         del temp
         gc.collect()
 
+        print(df[df['site_id'] == i].shape)
+
     # Create Features per Site Id  #####################################################################
     # Fillna(Interpolate)
     for i in range(df['site_id'].nunique()):
@@ -180,13 +203,8 @@ def prep_weather_data(df):
         # mixed Linear & Cubic Method  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/116012#latest-667255
         cols = ['air_temperature', 'dew_temperature', 'wind_direction', 'wind_speed']
         for c in cols:
-            # temp[c] = temp[c].interpolate(method='linear', limit_direction='both')
-            temp[c + '_linear'] = temp[c].interpolate(method='linear', limit_direction='both')
-            temp[c + '_poly'] = temp[c].interpolate(method='polynomial', order=3, limit_direction='both')
-            temp[c] = (temp[c + '_linear'] + temp[c + '_poly']) / 2
+            temp[c] = temp[c].interpolate(method='linear', limit_direction='both')
             df.loc[temp.index, c] = temp.loc[temp.index, c]
-            if c == 'wind_direction':
-                df[c] = df[c].astype(int)
 
         del temp
         gc.collect()
@@ -288,7 +306,6 @@ def prep_datetime_features(df):
     # Datetime  #####################################################################
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['month'] = df['timestamp'].dt.month.astype(np.uint8)
-    df['day'] = df['timestamp'].dt.day.astype(np.uint8)
     df['hour'] = df['timestamp'].dt.hour.astype(np.uint8)
     df['dayofweek'] = df['timestamp'].dt.dayofweek.astype(np.uint8)
     df['weekday'] = df['timestamp'].dt.weekday.astype(np.uint8)

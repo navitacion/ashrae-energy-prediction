@@ -39,7 +39,7 @@ class PreprocessingDataset:
 
         # Sort Timestamp  #####################################################################
         if mode == 'train':
-            self.df.sort_values(by='timestamp', ascending=True, inplace=True)
+            self.df.sort_values(by=['timestamp', 'building_id'], ascending=True, inplace=True)
             self.df.reset_index(drop=True, inplace=True)
         del self.df['timestamp']
         gc.collect()
@@ -60,22 +60,6 @@ class PreprocessingDataset:
         self.df['building_std'] = self.df['building_id'].map(self.building_std)
 
         self.df = reduce_mem_usage(self.df)
-
-        # # Datetime  #####################################################################
-        # self.df['timestamp'] = pd.to_datetime(self.df['timestamp'])
-        # self.df['month'] = self.df['timestamp'].dt.month.astype(np.uint8)
-        # self.df['day'] = self.df['timestamp'].dt.day.astype(np.uint8)
-        # self.df['hour'] = self.df['timestamp'].dt.hour.astype(np.uint8)
-        # self.df['weekday'] = self.df['timestamp'].dt.weekday.astype(np.uint8)
-        #
-        # # Holiday  #####################################################################
-        # dates_range = pd.date_range(start='2015-12-31', end='2019-01-01')
-        # us_holidays = calendar().holidays(start=dates_range.min(), end=dates_range.max())
-        # self.df['is_holiday'] = (
-        #     self.df['timestamp'].dt.date.astype('datetime64').isin(us_holidays)).astype(np.int8)
-        # self.df.loc[(self.df['weekday'] == 5) | (self.df['weekday'] == 6), 'is_holiday'] = 1
-        # del us_holidays
-        # gc.collect()
 
         # Group feature  #####################################################################
         self.df['building_id_month'] = self.df['building_id'].astype(str) + '_' + self.df['month'].astype(str)
@@ -99,7 +83,7 @@ class PreprocessingDataset:
             self.ce_oe = ce.OrdinalEncoder(cols=list_cols, handle_unknown='impute')
             temp = self.ce_oe.fit_transform(temp)
             temp = temp.astype('float32')
-            temp.columns = [s + '_LE' for s in list_cols]
+            temp.columns = [s + '_OD_enc' for s in list_cols]
             self.df = pd.concat([self.df, temp], axis=1)
             del temp
             gc.collect()
@@ -107,7 +91,7 @@ class PreprocessingDataset:
         elif mode == 'test':
             self.df = self.ce_oe.transform(temp)
             temp = temp.astype('float32')
-            temp.columns = [s + '_LE' for s in list_cols]
+            temp.columns = [s + '_OD_enc' for s in list_cols]
             self.df = pd.concat([self.df, temp], axis=1)
             del temp
             gc.collect()
