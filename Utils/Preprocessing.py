@@ -155,49 +155,63 @@ def prep_weather_data(df):
     # Drop Features  #####################################################################
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
-    
+
+    # Convert GMT  #####################################################################
+    # reference  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/115040#latest-667889
+    GMT_converter = {0: 4, 1: 0, 2: 7, 3: 4, 4: 7, 5: 0, 6: 4, 7: 4, 8: 4, 9: 5, 10: 7, 11: 4, 12: 0, 13: 5, 14: 4, 15: 4}
+
+    for i in range(16):
+        temp = df[df['site_id'] == i]
+        temp['timestamp'] = pd.to_datetime(temp['timestamp'])
+        temp['timestamp'] = temp['timestamp'].apply(lambda x: x - datetime.timedelta(hours=GMT_converter[i]))
+        temp['timestamp'] = temp['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
+        df.loc[temp.index, 'timestamp'] = temp.loc[temp.index, 'timestamp']
+
     # Modify Timestamp  #####################################################################
-    cols = ['timestamp', 'site_id', 'air_temperature']
-    a = pd.read_csv('../input/weather_train.csv', parse_dates=['timestamp'], usecols=cols)
-    b = pd.read_csv('../input/weather_test.csv', parse_dates=['timestamp'], usecols=cols)
-
-    weather = pd.concat([a, b], ignore_index=True)
-    del a, b
-    gc.collect()
-    weather_key = ['site_id', 'timestamp']
-
-    temp_skeleton = weather[weather_key + ['air_temperature']].drop_duplicates(subset=weather_key).sort_values(
-        by=weather_key).copy()
-
-    # calculate ranks of hourly temperatures within date/site_id chunks
-    temp_skeleton['temp_rank'] = temp_skeleton.groupby(['site_id', temp_skeleton.timestamp.dt.date])[
-        'air_temperature'].rank('average')
-
-    # create a dataframe of site_ids (0-16) x mean hour rank of temperature within day (0-23)
-    df_2d = temp_skeleton.groupby(['site_id', temp_skeleton.timestamp.dt.hour])['temp_rank'].mean().unstack(level=1)
-
-    # Subtract the columnID of temperature peak by 14, getting the timestamp alignment gap.
-    site_ids_offsets = pd.Series(df_2d.values.argmax(axis=1) - 14)
-    site_ids_offsets.index.name = 'site_id'
-
-    def timestamp_align(_df):
-        _df['offset'] = _df.site_id.map(site_ids_offsets)
-        _df['timestamp_aligned'] = (pd.to_datetime(_df.timestamp) - pd.to_timedelta(_df.offset, unit='H'))
-        _df['timestamp'] = _df['timestamp_aligned']
-        _df['timestamp'] = _df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-        del _df['timestamp_aligned'], _df['offset']
-        return _df
-
-    df = timestamp_align(df)
-
-    del weather, df_2d, temp_skeleton, site_ids_offsets
-    gc.collect()
+    # cols = ['timestamp', 'site_id', 'air_temperature']
+    # a = pd.read_csv('../input/weather_train.csv', parse_dates=['timestamp'], usecols=cols)
+    # b = pd.read_csv('../input/weather_test.csv', parse_dates=['timestamp'], usecols=cols)
+    #
+    # weather = pd.concat([a, b], ignore_index=True)
+    # del a, b
+    # gc.collect()
+    # weather_key = ['site_id', 'timestamp']
+    #
+    # temp_skeleton = weather[weather_key + ['air_temperature']].drop_duplicates(subset=weather_key).sort_values(
+    #     by=weather_key).copy()
+    #
+    # # calculate ranks of hourly temperatures within date/site_id chunks
+    # temp_skeleton['temp_rank'] = temp_skeleton.groupby(['site_id', temp_skeleton.timestamp.dt.date])[
+    #     'air_temperature'].rank('average')
+    #
+    # # create a dataframe of site_ids (0-16) x mean hour rank of temperature within day (0-23)
+    # df_2d = temp_skeleton.groupby(['site_id', temp_skeleton.timestamp.dt.hour])['temp_rank'].mean().unstack(level=1)
+    #
+    # # Subtract the columnID of temperature peak by 14, getting the timestamp alignment gap.
+    # site_ids_offsets = pd.Series(df_2d.values.argmax(axis=1) - 14)
+    # site_ids_offsets.index.name = 'site_id'
+    #
+    # def timestamp_align(_df):
+    #     _df['offset'] = _df.site_id.map(site_ids_offsets)
+    #     _df['timestamp_aligned'] = (pd.to_datetime(_df.timestamp) - pd.to_timedelta(_df.offset, unit='H'))
+    #     _df['timestamp'] = _df['timestamp_aligned']
+    #     _df['timestamp'] = _df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
+    #     del _df['timestamp_aligned'], _df['offset']
+    #     return _df
+    #
+    # df = timestamp_align(df)
+    #
+    # del weather, df_2d, temp_skeleton, site_ids_offsets
+    # gc.collect()
 
     # Create Features per Site Id  #####################################################################
     # Fillna(Interpolate)
     for i in range(df['site_id'].nunique()):
         temp = df[df['site_id'] == i]
-        temp = temp.sort_values(by='timestamp')
+        temp = temp.sort_values(by='timestamp').reset_index()
+
+        print(temp.head())
+        temp.to_csv('aaa.csv', index=False)
 
         # Interpolation
         # mixed Linear & Cubic Method  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/116012#latest-667255
