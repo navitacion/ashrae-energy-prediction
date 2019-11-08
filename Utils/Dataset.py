@@ -121,6 +121,7 @@ class PreprocessingDataset:
         if mode == 'train':
             self.ce_oe = ce.OrdinalEncoder(handle_unknown='impute')
             temp = self.ce_oe.fit_transform(temp)
+            temp = temp.astype('float32')
             temp.columns = [s + '_LE' for s in list_cols]
             self.df = pd.concat([self.df, temp], axis=1)
             del temp
@@ -128,25 +129,32 @@ class PreprocessingDataset:
 
         elif mode == 'test':
             self.df = self.ce_oe.transform(temp)
+            temp = temp.astype('float32')
             temp.columns = [s + '_LE' for s in list_cols]
             self.df = pd.concat([self.df, temp], axis=1)
             del temp
             gc.collect()
 
-        # CatBoostEncoder  #####################################################################
-            list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
-            temp = self.df[list_cols]
-            if mode == 'train':
-                self.ce_cat = ce.CatBoostEncoder(handle_unknown='impute')
-                temp = self.ce_cat.fit_transform(temp, self.df['meter_reading'])
-                temp.columns = [s + '_CB_enc' for s in list_cols]
-                self.df = pd.concat([self.df, temp], axis=1)
-                del temp
-                gc.collect()
+        self.df, _ = reduce_mem_usage(self.df)
 
-            elif mode == 'test':
-                self.df = self.ce_cat.transform(temp)
-                temp.columns = [s + '_CB_enc' for s in list_cols]
-                self.df = pd.concat([self.df, temp], axis=1)
-                del temp
-                gc.collect()
+        # CatBoostEncoder  #####################################################################
+        list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month', 'building_id_meter_month_use']
+        temp = self.df[list_cols]
+        if mode == 'train':
+            self.ce_cat = ce.CatBoostEncoder(handle_unknown='impute')
+            temp = self.ce_cat.fit_transform(temp, self.df['meter_reading'])
+            temp = temp.astype('float32')
+            temp.columns = [s + '_CB_enc' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
+
+        elif mode == 'test':
+            self.df = self.ce_cat.transform(temp)
+            temp = temp.astype('float32')
+            temp.columns = [s + '_CB_enc' for s in list_cols]
+            self.df = pd.concat([self.df, temp], axis=1)
+            del temp
+            gc.collect()
+
+        self.df, _ = reduce_mem_usage(self.df)
