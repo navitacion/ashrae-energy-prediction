@@ -40,6 +40,14 @@ g_params_2 = {
     'params': model_params
 }
 
+g_params_3 = {
+    'cv': KFold(n_splits=3, shuffle=False),
+    'num_boost_round': 6000,
+    'early_stopping_rounds': 100,
+    'verbose': 1000,
+    'params': model_params
+}
+
 # CatBoost
 # Model Params  ##################################################################
 model_params_cat = {
