@@ -48,7 +48,7 @@ train = pd.read_csv("../input/train.csv", dtype=read_dtypes)
 df_weather_train = pd.read_csv("../input/weather_train.csv", dtype=read_dtypes_weather)
 df_building = pd.read_csv("../input/building_metadata.csv")
 
-train = train.sample(frac=0.01)
+# train = train.sample(frac=0.01)
 
 # Prepare Train Data
 Dataset = PreprocessingDataset()
