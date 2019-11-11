@@ -182,21 +182,19 @@ def prep_weather_data(df):
     GMT_converter = {0: 4, 1: 0, 2: 7, 3: 4, 4: 7, 5: 0, 6: 4, 7: 4, 8: 4, 9: 5, 10: 7, 11: 4, 12: 0, 13: 5, 14: 4, 15: 4}
 
     for i in range(16):
-        temp = df[df['site_id'] == i]
-        temp['timestamp'] = pd.to_datetime(temp['timestamp'])
+        temp = df[df['site_id'] == i].copy()
+        temp['timestamp'] = pd.to_datetime(temp['timestamp'].values)
         temp.sort_values(by='timestamp', inplace=True)
-        temp['timestamp'] = temp['timestamp'].apply(lambda x: x - datetime.timedelta(hours=GMT_converter[i]))
+        temp['timestamp'] = temp['timestamp'] - datetime.timedelta(hours=GMT_converter[i])
         temp['timestamp'] = temp['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
         df.loc[temp.index, 'timestamp'] = temp.loc[temp.index, 'timestamp']
         del temp
         gc.collect()
 
-        print(df[df['site_id'] == i].shape)
-
     # Create Features per Site Id  #####################################################################
     # Fillna(Interpolate)
     for i in range(df['site_id'].nunique()):
-        temp = df[df['site_id'] == i]
+        temp = df[df['site_id'] == i].copy()
         temp = temp.sort_values(by='timestamp')
 
         # Interpolation
