@@ -55,7 +55,7 @@ def reduce_mem_usage(df):
 
 
 def extract_id_meter(df, building_id, meter):
-    temp = df[df['building_id'] == building_id]
+    temp = df[df['building_id'] == building_id].copy()
     temp = temp[temp['meter'] == meter]
     return temp
 

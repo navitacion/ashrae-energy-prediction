@@ -20,7 +20,7 @@ class PreprocessingDataset:
             df = prep_core_data(df)
 
         # Weather Data Prep  #####################################################################
-        df_weather = prep_weather_data(df_weather)
+        df_weather = prep_weather_data(df_weather, mode=mode)
 
         # Building MetaData Prep  #####################################################################
         df_building = prep_building_data(df_building)
@@ -47,11 +47,11 @@ class PreprocessingDataset:
         # TargetEncoding  #####################################################################
         if mode == 'train':
             df_group = self.df.groupby('building_id')['meter_reading']
-            self.building_mean = df_group.mean().astype(np.float32)
-            self.building_median = df_group.median().astype(np.float32)
-            self.building_min = df_group.min().astype(np.float32)
-            self.building_max = df_group.max().astype(np.float32)
-            self.building_std = df_group.std().astype(np.float32)
+            self.building_mean = df_group.mean().astype(np.float16)
+            self.building_median = df_group.median().astype(np.float16)
+            self.building_min = df_group.min().astype(np.float16)
+            self.building_max = df_group.max().astype(np.float16)
+            self.building_std = df_group.std().astype(np.float16)
 
         self.df['building_mean'] = self.df['building_id'].map(self.building_mean)
         self.df['building_median'] = self.df['building_id'].map(self.building_median)
@@ -72,13 +72,13 @@ class PreprocessingDataset:
         for col in cols:
             fq_encode = self.df[col].value_counts().to_dict()
             self.df[col + '_fq_enc'] = self.df[col].map(fq_encode)
-            self.df[col + '_fq_enc'] = self.df[col + '_fq_enc'].astype(np.float32)
-
-        self.df = reduce_mem_usage(self.df)
+            self.df[col + '_fq_enc'] = self.df[col + '_fq_enc'].astype(np.int16)
+            del fq_encode
+            gc.collect()
 
         # LabelEncoder  #####################################################################
         list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month']
-        temp = self.df[list_cols]
+        temp = self.df[list_cols].copy()
         if mode == 'train':
             self.ce_oe = ce.OrdinalEncoder(cols=list_cols, handle_unknown='impute')
             temp = self.ce_oe.fit_transform(temp)
@@ -89,7 +89,7 @@ class PreprocessingDataset:
             gc.collect()
 
         elif mode == 'test':
-            self.df = self.ce_oe.transform(temp)
+            temp = self.ce_oe.transform(temp)
             temp = temp.astype('float32')
             temp.columns = [s + '_OD_enc' for s in list_cols]
             self.df = pd.concat([self.df, temp], axis=1)
@@ -117,11 +117,9 @@ class PreprocessingDataset:
         #     gc.collect()
 
         # Set_Dtypes  #####################################################################
+        self.df = reduce_mem_usage(self.df)
+
         def set_dtypes(df, cat_cols):
-            # float16
-            cols = df.select_dtypes(include=[np.float64]).columns
-            for c in cols:
-                df[c] = df[c].astype(np.float32)
             # category
             for c in cat_cols:
                 try:

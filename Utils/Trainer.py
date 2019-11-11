@@ -150,8 +150,6 @@ class Trainer:
 
     def predict(self, df, step_size=500):
 
-        df.drop('row_id', axis=1, inplace=True)
-
         i = 0
         res = []
         for j in range(int(np.ceil(df.shape[0] / step_size))):
