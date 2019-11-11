@@ -223,6 +223,15 @@ def prep_weather_data(df, mode='train'):
     del a_temp, d_temp
     gc.collect()
 
+    # Disconfort Index
+    # https://keisan.casio.jp/exec/system/1202883065
+
+    def disconfort_index(row):
+        return 0.81 * row['air_temperature'] + 0.01 * row['relative_hummd'] * \
+               (0.99 * row['air_temperature'] - 14.3) + 46.3
+
+    df['DI'] = df.apply(disconfort_index, axis=1)
+
     # Wind Direction  #####################################################################
     df.loc[df['wind_direction'] == 65535, 'wind_direction'] = np.nan
     df.loc[df['wind_direction'] == 360, 'wind_direction'] = 0
