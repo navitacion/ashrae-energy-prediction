@@ -153,29 +153,30 @@ def prep_core_data(df):
 
 
 # Preprocessing Weather Data
-def prep_weather_data(df):
+def prep_weather_data(df, mode='train'):
     # Drop Features  #####################################################################
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
 
 
-    # Fill Lossed Date
-    dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
-    dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
+    # Fill Lossed Date (Only Train)
+    if mode == 'train':
+        dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
+        dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
 
-    for i in range(16):
-        temp = df[df['site_id'] == i]
-        temp = pd.merge(temp, dates_DF, how="outer", left_on=['timestamp'], right_on=['Date'])
-        del temp['timestamp']
-        temp = temp.rename(columns={'Date': 'timestamp'})
-        temp['site_id'] = i
-        df = pd.concat([df, temp], axis=0, ignore_index=True, sort=True)
-        df.drop_duplicates(inplace=True)
-        del temp
+        for i in range(16):
+            temp = df[df['site_id'] == i].copy()
+            temp = pd.merge(temp, dates_DF, how="outer", left_on=['timestamp'], right_on=['Date'])
+            del temp['timestamp']
+            temp = temp.rename(columns={'Date': 'timestamp'})
+            temp['site_id'] = i
+            df = pd.concat([df, temp], axis=0, ignore_index=True, sort=True)
+            df.drop_duplicates(inplace=True)
+            del temp
+            gc.collect()
+
+        del dates_DF
         gc.collect()
-
-    del dates_DF
-    gc.collect()
 
     # Convert GMT  #####################################################################
     # reference  https://www.kaggle.com/patrick0302/locate-cities-according-weather-temperature
