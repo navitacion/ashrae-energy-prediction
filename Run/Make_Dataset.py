@@ -19,14 +19,23 @@ cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
             "month", "meter", 'building_id_month', 'building_id_meter_month']
 
 read_dtypes = {
+    'building_id': 'uint16',
     'meter': 'uint8',
     'meter_reading': 'float32'
+}
+
+read_dtypes_building = {
+    'building_id': 'uint16',
+    'site_id': 'uint8',
+    'square_feet': 'float32'
 }
 
 read_dtypes_weather = {
     'air_temperature': 'float32',
     'dew_temperature': 'float32',
-    'wind_speed': 'float32'
+    'wind_speed': 'float32',
+    'wind_diraction': 'int32',
+    'sea_level_pressure': 'float32'
 }
 
 def set_dtypes(df, cat_cols):
@@ -48,7 +57,7 @@ print('Train...')
 _start = time.time()
 train = pd.read_csv("../input/train.csv", dtype=read_dtypes)
 df_weather_train = pd.read_csv("../input/weather_train.csv", dtype=read_dtypes_weather)
-df_building = pd.read_csv("../input/building_metadata.csv")
+df_building = pd.read_csv("../input/building_metadata.csv", dtype=read_dtypes_building)
 
 # train = train.sample(frac=0.01)
 
@@ -103,7 +112,7 @@ test_gen = pd.read_csv("../input/test.csv", chunksize=chunksize, dtype=read_dtyp
 # Prepare Test Data
 for i, test in enumerate(test_gen):
     df_weather_test = pd.read_csv("../input/weather_test.csv", dtype=read_dtypes_weather)
-    df_building = pd.read_csv("../input/building_metadata.csv")
+    df_building = pd.read_csv("../input/building_metadata.csv", dtype=read_dtypes_building)
     test_num = 41697600
     limit = int(np.ceil(test_num / chunksize))
     print("\r" + str(i + 1) + "/" + str(limit), end="")
