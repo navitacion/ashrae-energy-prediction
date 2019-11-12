@@ -17,15 +17,16 @@ from Utils.Parameter import *
 _start = time.time()
 chunk_size = 500000
 today = datetime.datetime.now().strftime('%Y%m%d')
-use_col_nums = 40
-params = g_params_cat
+use_col_nums = 20
+params = g_params_cat_2
 
-train_data_path = '../input/prep_train_20191111.pkl'
-test_data_path = '../input/prep_test_20191111_*.pkl'
-feature_importance_list_path = '../Importance/importance_20191111.csv'
+train_data_path = '../input/prep_train_20191112.pkl'
+test_data_path = '../input/prep_test_20191112_*.pkl'
+feature_importance_list_path = '../Importance/importance_20191112.csv'
 
 # Prep Train Data  #####################################################################
 set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
+set_cols = set_cols + ['month']
 train_set_cols = set_cols + ['meter_reading']
 
 # Load Pkl File  #####################################################################

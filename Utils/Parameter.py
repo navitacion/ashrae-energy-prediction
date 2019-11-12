@@ -51,12 +51,12 @@ g_params_3 = {
 # CatBoost
 # Model Params  ##################################################################
 model_params_cat = {
-        'learning_rate': 0.1,
+        'learning_rate': 0.3,
         'eval_metric': 'RMSE',
         'loss_function': 'RMSE',
         'random_seed': 42,
         'metric_period': 10,
-        'task_type': 'GPU',
+        'task_type': 'CPU',
         'depth': 8,
     }
 
@@ -67,5 +67,14 @@ g_params_cat = {
     'early_stopping_rounds': 100,
     'verbose': 1000,
     'split': 'building_id',
+    'params': model_params_cat
+}
+
+g_params_cat_2 = {
+    'cv': GroupKFold(4),
+    'num_boost_round': 100,
+    'early_stopping_rounds': 10,
+    'verbose': 10,
+    'group': 'month',
     'params': model_params_cat
 }

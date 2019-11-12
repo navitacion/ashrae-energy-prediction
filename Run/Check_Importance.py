@@ -13,7 +13,7 @@ from Utils.Parameter import *
 
 
 # Config  #####################################################################
-Sampling_rate = None
+Sampling_rate = 0.05
 SEED = 42
 today = datetime.datetime.now().strftime('%Y%m%d')
 
@@ -21,7 +21,7 @@ today = datetime.datetime.now().strftime('%Y%m%d')
 
 # Load Pkl File  #####################################################################
 print('Check Feature Importance...')
-with open('../input/prep_train_20191108.pkl', 'rb') as f:
+with open('../input/prep_train_20191112.pkl', 'rb') as f:
     Dataset = pickle.load(f)
 
 # Sampling
