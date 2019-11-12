@@ -12,6 +12,16 @@ model_params = {
     'seed': 42
 }
 
+model_params_2 = {
+    "objective": "regression",
+    "boosting": "gbdt",
+    "metric": "rmse",
+    "num_leaves": 40,
+    "learning_rate": 0.01,
+    "feature_fraction": 0.85,
+    "reg_lambda": 2,
+}
+
 # General Params  ##################################################################
 g_params = {
     'cv': StratifiedKFold(4, shuffle=True, random_state=42),
