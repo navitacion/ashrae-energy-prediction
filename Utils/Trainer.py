@@ -108,6 +108,7 @@ class Trainer:
                                  verbose_eval=verbose,
                                  early_stopping_rounds=early_stopping_rounds)
 
+        self.models.append(model_half_1)
         oof = model_half_1.predict(X_half_2, num_iteration=model_half_1.best_iteration)
         rmse_1 = np.sqrt(mean_squared_error(oof, y_half_2))
         print('Half_1:  RMSE: {:.4f}'.format(rmse_1))
@@ -119,12 +120,12 @@ class Trainer:
                                  verbose_eval=verbose,
                                  early_stopping_rounds=early_stopping_rounds)
 
+        self.models.append(model_half_2)
         oof = model_half_2.predict(X_half_1, num_iteration=model_half_2.best_iteration)
         rmse_2 = np.sqrt(mean_squared_error(oof, y_half_1))
         print('Half_2:  RMSE: {:.4f}'.format(rmse_2))
 
         self.oof = (rmse_1 + rmse_2) / 2
-        self.models = [model_half_1, model_half_2]
         print('OOF Error: {:.5f}'.format(self.oof))
 
         return self.models
