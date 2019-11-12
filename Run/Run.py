@@ -18,7 +18,7 @@ _start = time.time()
 chunk_size = 500000
 today = datetime.datetime.now().strftime('%Y%m%d')
 use_col_nums = 40
-params = g_params
+params = g_params_3
 
 train_data_path = '../input/prep_train_20191111.pkl'
 test_data_path = '../input/prep_test_20191111_*.pkl'
