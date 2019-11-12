@@ -13,14 +13,14 @@ class PreprocessingDataset:
     def __init__(self):
         self.df = None
 
-    def prep(self, df, df_weather, df_building, mode='train'):
+    def prep(self, df, df_weather, df_building, mode='train', fill_loss_date=True):
 
         # Core Data Prep  #####################################################################
         if mode == 'train':
-            df = prep_core_data(df)
+            df = prep_core_data(df, fill_loss_date=fill_loss_date)
 
         # Weather Data Prep  #####################################################################
-        df_weather = prep_weather_data(df_weather, mode=mode)
+        df_weather = prep_weather_data(df_weather, mode=mode, fill_loss_date=fill_loss_date)
 
         # Building MetaData Prep  #####################################################################
         df_building = prep_building_data(df_building)

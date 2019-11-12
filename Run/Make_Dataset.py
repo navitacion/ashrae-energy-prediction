@@ -14,7 +14,6 @@ from Utils.Parameter import *
 
 pd.set_option('max_rows', 9999)
 
-today = (datetime.datetime.now()).strftime('%Y%m%d')
 cat_cols = ["site_id", "building_id", "primary_use", "hour", "day", "weekday",
             "month", "meter", 'building_id_month', 'building_id_meter_month']
 
@@ -52,6 +51,10 @@ def set_dtypes(df, cat_cols):
 
     return df
 
+# Config  #####################################################################
+today = (datetime.datetime.now()).strftime('%Y%m%d')
+fill_loss_date = False
+
 # Prep Train Data  #####################################################################
 print('Train...')
 _start = time.time()
@@ -63,7 +66,7 @@ df_building = pd.read_csv("../input/building_metadata.csv", dtype=read_dtypes_bu
 
 # Prepare Train Data
 Dataset = PreprocessingDataset()
-Dataset.prep(train, df_weather_train, df_building, mode='train')
+Dataset.prep(train, df_weather_train, df_building, mode='train', fill_loss_date=fill_loss_date)
 
 # Data Type  #####################################################################
 # Dataset.df = set_dtypes(Dataset.df, cat_cols)

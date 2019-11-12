@@ -61,7 +61,7 @@ def extract_id_meter(df, building_id, meter):
 
 
 # Preprocessing for Core Data
-def prep_core_data(df):
+def prep_core_data(df, fill_loss_date=True):
     # Log
     df['meter_reading'] = np.log1p(df['meter_reading'].values)
 
@@ -109,8 +109,9 @@ def prep_core_data(df):
 
         return _df
 
-    for _id, meter in zip(df_loss['building_id'], df_loss['meter']):
-        df = fill_date(df, _id, meter)
+    if fill_loss_date:
+        for _id, meter in zip(df_loss['building_id'], df_loss['meter']):
+            df = fill_date(df, _id, meter)
 
     del df_loss
     gc.collect()
@@ -153,14 +154,14 @@ def prep_core_data(df):
 
 
 # Preprocessing Weather Data
-def prep_weather_data(df, mode='train'):
+def prep_weather_data(df, mode='train', fill_loss_date=True):
     # Drop Features  #####################################################################
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
 
 
     # Fill Lossed Date (Only Train)
-    if mode == 'train':
+    if mode == 'train' and fill_loss_date:
         dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
         dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
 
@@ -223,7 +224,7 @@ def prep_weather_data(df, mode='train'):
     del a_temp, d_temp
     gc.collect()
 
-    # Disconfort Index
+    # Disconfort Index  #####################################################################
     # https://keisan.casio.jp/exec/system/1202883065
 
     def disconfort_index(row):
