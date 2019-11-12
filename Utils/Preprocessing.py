@@ -159,7 +159,6 @@ def prep_weather_data(df, mode='train', fill_loss_date=True):
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
 
-
     # Fill Lossed Date (Only Train)
     if mode == 'train' and fill_loss_date:
         dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
@@ -228,10 +227,32 @@ def prep_weather_data(df, mode='train', fill_loss_date=True):
     # https://keisan.casio.jp/exec/system/1202883065
 
     def disconfort_index(row):
-        return 0.81 * row['air_temperature'] + 0.01 * row['relative_hummd'] * \
-               (0.99 * row['air_temperature'] - 14.3) + 46.3
+        T = row['air_temperature']
+        RH = row['relative_hummd']
+        return 0.81 * T + 0.01 * RH * (0.99 * T - 14.3) + 46.3
 
     df['DI'] = df.apply(disconfort_index, axis=1)
+
+    # Apparent Temperature  #####################################################################
+    # https://keisan.casio.jp/exec/system/1257417058
+
+    def apparent_temperature(row):
+        T = row['air_temperature']
+        h = row['relative_hummd']
+        A = 1.76 + 1.4 * row['wind_speed'] ** 0.75
+        return 37 - (37 - T) / (0.68 - 0.0014 * h + 1/A) - 0.29 * T * (1 - h / 100)
+
+    df['AT'] = df.apply(apparent_temperature, axis=1)
+
+    # WCI  #####################################################################
+    # https://www.metsoc.jp/tenki/pdf/2010/2010_01_0057.pdf
+
+    def WCI(row):
+        T = row['air_temperature']
+        U = row['wind_speed']
+        return (33 - T) * (10.45 + 10 * U ** 0.5 - U)
+
+    df['WCI'] = df.apply(WCI, axis=1)
 
     # Wind Direction  #####################################################################
     df.loc[df['wind_direction'] == 65535, 'wind_direction'] = np.nan
@@ -259,7 +280,7 @@ def prep_weather_data(df, mode='train', fill_loss_date=True):
         temp = df[df['site_id'] == i]
         temp = temp.sort_values(by='timestamp')
         # Rolling
-        cols = ['air_temperature', 'dew_temperature', 'relative_hummd']
+        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'AT']
         for c in cols:
             for window in [24, 48, 72, 96]:
                 # Mean
@@ -284,7 +305,7 @@ def prep_weather_data(df, mode='train', fill_loss_date=True):
                 df[colname] = df[colname].astype(np.float16)
 
         # Shift
-        cols = ['air_temperature', 'dew_temperature', 'relative_hummd', 'wind_speed']
+        cols = ['relative_hummd', 'DI', 'AT']
         for c in cols:
             for period in [24, 48, 72, 96]:
                 colname = '{}_shift_{}'.format(c, period)
