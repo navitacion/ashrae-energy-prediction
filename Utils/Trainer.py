@@ -81,6 +81,54 @@ class Trainer:
 
         return self.models
 
+    def train_half(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose):
+        self.y = df['meter_reading']
+        self.x = df.drop(['meter_reading'], axis=1)
+        self.cv = cv
+        self.oof = 0.0
+        self.models = []
+        self.features = self.x.columns
+
+        X_half_1 = self.x.iloc[:int(self.x.shape[0] / 2)]
+        X_half_2 = self.x.iloc[int(self.x.shape[0] / 2):]
+
+        y_half_1 = self.y.iloc[:int(self.x.shape[0] / 2)]
+        y_half_2 = self.y.iloc[int(self.x.shape[0] / 2):]
+
+        d_half_1 = lgb.Dataset(X_half_1, label=y_half_1, free_raw_data=False)
+        d_half_2 = lgb.Dataset(X_half_2, label=y_half_2, free_raw_data=False)
+
+        watchlist_1 = [d_half_1, d_half_2]
+        watchlist_2 = [d_half_2, d_half_1]
+
+        model_half_1 = lgb.train(params,
+                                 train_set=d_half_1,
+                                 num_boost_round=num_boost_round,
+                                 valid_sets=watchlist_1,
+                                 verbose_eval=verbose,
+                                 early_stopping_rounds=early_stopping_rounds)
+
+        oof = model_half_1.predict(X_half_2, num_iteration=model_half_1.best_iteration)
+        rmse_1 = np.sqrt(mean_squared_error(oof, y_half_2))
+        print('Half_1:  RMSE: {:.4f}'.format(rmse_1))
+
+        model_half_2 = lgb.train(params,
+                                 train_set=d_half_2,
+                                 num_boost_round=num_boost_round,
+                                 valid_sets=watchlist_2,
+                                 verbose_eval=verbose,
+                                 early_stopping_rounds=early_stopping_rounds)
+
+        oof = model_half_2.predict(X_half_1, num_iteration=model_half_2.best_iteration)
+        rmse_2 = np.sqrt(mean_squared_error(oof, y_half_1))
+        print('Half_2:  RMSE: {:.4f}'.format(rmse_2))
+
+        self.oof = (rmse_1 + rmse_2) / 2
+        self.models = [model_half_1, model_half_2]
+        print('OOF Error: {:.5f}'.format(self.oof))
+
+        return self.models
+
     def train_by_col(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, div_col, split=None):
         self.cv = cv
         self.models = {}
