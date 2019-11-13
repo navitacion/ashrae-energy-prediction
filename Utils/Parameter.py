@@ -52,10 +52,10 @@ g_params_2 = {
 
 g_params_3 = {
     'cv': KFold(n_splits=3, shuffle=False),
-    'num_boost_round': 6000,
-    'early_stopping_rounds': 100,
+    'num_boost_round': 1000,
+    'early_stopping_rounds': 200,
     'verbose': 1000,
-    'params': model_params
+    'params': model_params_2
 }
 
 # CatBoost
@@ -66,7 +66,7 @@ model_params_cat = {
         'loss_function': 'RMSE',
         'random_seed': 42,
         'metric_period': 10,
-        'task_type': 'CPU',
+        'task_type': 'GPU',
         'depth': 8,
     }
 

@@ -53,7 +53,7 @@ def set_dtypes(df, cat_cols):
 
 # Config  #####################################################################
 today = (datetime.datetime.now()).strftime('%Y%m%d')
-fill_loss_date = True
+fill_loss_date = False
 
 # Prep Train Data  #####################################################################
 print('Train...')

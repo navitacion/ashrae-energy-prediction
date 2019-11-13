@@ -20,9 +20,9 @@ today = datetime.datetime.now().strftime('%Y%m%d')
 use_col_nums = 40
 params = g_params_3
 
-train_data_path = '../input/prep_train_20191111.pkl'
-test_data_path = '../input/prep_test_20191111_*.pkl'
-feature_importance_list_path = '../Importance/importance_20191111.csv'
+train_data_path = '../input/prep_train_20191113.pkl'
+test_data_path = '../input/prep_test_20191113_*.pkl'
+feature_importance_list_path = '../Importance/importance_20191113.csv'
 
 # Prep Train Data  #####################################################################
 set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
@@ -31,7 +31,7 @@ set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].t
 # drop_cols = ['building_id_meter_month', 'building_id_month', 'building_id_meter_month']
 # set_cols = [c for c in set_cols if c not in drop_cols]
 
-train_set_cols = set_cols + ['meter_reading']
+train_set_cols = set_cols + ['meter_reading', 'month']
 
 # Load Pkl File  #####################################################################
 print('Create Model...')
@@ -40,7 +40,7 @@ with open(train_data_path, 'rb') as f:
 
 # Model Create  #####################################################################
 model = Trainer(model_type='lgb')
-_ = model.train(Dataset.df[train_set_cols], **params)
+_ = model.train_half_by_month(Dataset.df[train_set_cols], **params)
 # save models
 with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
     pickle.dump(model, f, protocol=4)
