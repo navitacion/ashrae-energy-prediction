@@ -73,6 +73,9 @@ sub = pd.DataFrame({
     'meter_reading': np.concatenate(pred)
 })
 
+# Clip
+# sub['meter_reading'] = sub['meter_reading'].clip(lower=0)
+
 # Create Submit DataFrame
 sub.sort_values(by='row_id', ascending=True, inplace=True)
 sub.to_csv(f"../Output/submission_{model.model_type}_{today}_oof_{model.oof:.3f}.csv", index=False)
