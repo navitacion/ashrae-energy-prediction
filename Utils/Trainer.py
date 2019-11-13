@@ -172,6 +172,101 @@ class Trainer:
 
         return self.models
 
+    def train_half_by_month(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose):
+        self.y = df['meter_reading']
+        self.x = df.drop(['meter_reading'], axis=1)
+        self.cv = cv
+        self.oof = 0.0
+        self.models = []
+        self.features = self.x.columns
+
+        self.x['month'] = self.x['month'].astype(int)
+
+        X_half_1 = self.x[self.x['month'] <= 6]
+        X_half_2 = self.x[self.x['month'] > 6]
+
+        del X_half_1['month'], X_half_2['month']
+
+        y_half_1 = self.y.iloc[X_half_1.index]
+        y_half_2 = self.y.iloc[X_half_2.index]
+
+        if self.model_type == 'lgb':
+            d_half_1 = lgb.Dataset(X_half_1, label=y_half_1, free_raw_data=False)
+            d_half_2 = lgb.Dataset(X_half_2, label=y_half_2, free_raw_data=False)
+
+            watchlist_1 = [d_half_1, d_half_2]
+            watchlist_2 = [d_half_2, d_half_1]
+
+            model_half_1 = lgb.train(params,
+                                     train_set=d_half_1,
+                                     num_boost_round=num_boost_round,
+                                     valid_sets=watchlist_1,
+                                     verbose_eval=verbose,
+                                     early_stopping_rounds=early_stopping_rounds)
+
+            oof = model_half_1.predict(X_half_2, num_iteration=model_half_1.best_iteration)
+            rmse_1 = np.sqrt(mean_squared_error(oof, y_half_2))
+            print('Half_1:  RMSE: {:.4f}'.format(rmse_1))
+            self.models.append(model_half_1)
+            del model_half_1
+            gc.collect()
+
+            model_half_2 = lgb.train(params,
+                                     train_set=d_half_2,
+                                     num_boost_round=num_boost_round,
+                                     valid_sets=watchlist_2,
+                                     verbose_eval=verbose,
+                                     early_stopping_rounds=early_stopping_rounds)
+
+            oof = model_half_2.predict(X_half_1, num_iteration=model_half_2.best_iteration)
+            rmse_2 = np.sqrt(mean_squared_error(oof, y_half_1))
+            print('Half_2:  RMSE: {:.4f}'.format(rmse_2))
+            self.models.append(model_half_2)
+            del model_half_2
+            gc.collect()
+
+            self.oof = (rmse_1 + rmse_2) / 2
+            print('OOF Error: {:.5f}'.format(self.oof))
+
+        elif self.model_type == 'cat':
+            cat_features_index = np.where(self.x.dtypes == 'category')[0]
+            d_half_1 = Pool(X_half_1, label=y_half_1, cat_features=cat_features_index)
+            d_half_2 = Pool(X_half_2, label=y_half_2, cat_features=cat_features_index)
+            params['iterations'] = num_boost_round
+
+            model_half_1 = CatBoostRegressor(**params)
+            model_half_1.fit(d_half_1,
+                             eval_set=d_half_2,
+                             use_best_model=True,
+                             early_stopping_rounds=early_stopping_rounds,
+                             verbose=verbose)
+
+            oof = model_half_1.predict(X_half_2)
+            rmse_1 = np.sqrt(mean_squared_error(oof, y_half_2))
+            print('Half_1:  RMSE: {:.4f}'.format(rmse_1))
+            self.models.append(model_half_1)
+            del model_half_1
+            gc.collect()
+
+            model_half_2 = CatBoostRegressor(**params)
+            model_half_2.fit(d_half_2,
+                             eval_set=d_half_1,
+                             use_best_model=True,
+                             early_stopping_rounds=early_stopping_rounds,
+                             verbose=verbose)
+
+            oof = model_half_2.predict(X_half_1)
+            rmse_2 = np.sqrt(mean_squared_error(oof, y_half_1))
+            print('Half_2:  RMSE: {:.4f}'.format(rmse_2))
+            self.models.append(model_half_2)
+            del model_half_2
+            gc.collect()
+
+            self.oof = (rmse_1 + rmse_2) / 2
+            print('OOF Error: {:.5f}'.format(self.oof))
+
+        return self.models
+
     def train_by_col(self, df, params, cv, num_boost_round, early_stopping_rounds, verbose, div_col, split=None):
         self.cv = cv
         self.models = {}
