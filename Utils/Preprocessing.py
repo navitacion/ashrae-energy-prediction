@@ -7,49 +7,40 @@ from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
 pd.set_option('max_rows', 9999)
 
 
-# Based on this great kernel https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
-def reduce_mem_usage(df):
-    NAlist = []  # Keeps track of columns that have missing values filled in.
-    for col in df.columns:
-        if df[col].dtype != object:  # Exclude strings
-            # make variables for Int, max and min
-            IsInt = False
-            mx = df[col].max()
-            mn = df[col].min()
-            # Integer does not support NA, therefore, NA needs to be filled
-            if not np.isfinite(df[col]).all():
-                NAlist.append(col)
-                df[col].fillna(mn - 1, inplace=True)
+# Recuce_mem
+def reduce_mem_usage(df, use_float16=False):
+    """
+    Iterate through all the columns of a dataframe and modify the data type to reduce memory usage.
+    """
+    from pandas.api.types import is_datetime64_any_dtype as is_datetime
+    from pandas.api.types import is_categorical_dtype
 
-                # test if column can be converted to an integer
-            asint = df[col].fillna(0).astype(np.int64)
-            result = (df[col] - asint)
-            result = result.sum()
-            if result > -0.01 and result < 0.01:
-                IsInt = True
-                # Make Integer/unsigned Integer datatypes
-            if IsInt:
-                if mn >= 0:
-                    if mx < 255:
-                        df[col] = df[col].astype(np.uint8)
-                    elif mx < 65535:
-                        df[col] = df[col].astype(np.uint16)
-                    elif mx < 4294967295:
-                        df[col] = df[col].astype(np.uint32)
-                    else:
-                        df[col] = df[col].astype(np.uint64)
-                else:
-                    if mn > np.iinfo(np.int8).min and mx < np.iinfo(np.int8).max:
-                        df[col] = df[col].astype(np.int8)
-                    elif mn > np.iinfo(np.int16).min and mx < np.iinfo(np.int16).max:
-                        df[col] = df[col].astype(np.int16)
-                    elif mn > np.iinfo(np.int32).min and mx < np.iinfo(np.int32).max:
-                        df[col] = df[col].astype(np.int32)
-                    elif mn > np.iinfo(np.int64).min and mx < np.iinfo(np.int64).max:
-                        df[col] = df[col].astype(np.int64)
-                        # Make float datatypes 32 bit
+    for col in df.columns:
+        if is_datetime(df[col]) or is_categorical_dtype(df[col]):
+            continue
+        col_type = df[col].dtype
+
+        if col_type != object:
+            c_min = df[col].min()
+            c_max = df[col].max()
+            if str(col_type)[:3] == "int":
+                if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
+                    df[col] = df[col].astype(np.int8)
+                elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
+                    df[col] = df[col].astype(np.int16)
+                elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
+                    df[col] = df[col].astype(np.int32)
+                elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
+                    df[col] = df[col].astype(np.int64)
             else:
-                df[col] = df[col].astype(np.float32)
+                if use_float16 and c_min > np.finfo(np.float16).min and c_max < np.finfo(np.float16).max:
+                    df[col] = df[col].astype(np.float16)
+                elif c_min > np.finfo(np.float32).min and c_max < np.finfo(np.float32).max:
+                    df[col] = df[col].astype(np.float32)
+                else:
+                    df[col] = df[col].astype(np.float64)
+        else:
+            df[col] = df[col].astype("category")
 
     return df
 
@@ -61,60 +52,9 @@ def extract_id_meter(df, building_id, meter):
 
 
 # Preprocessing for Core Data
-def prep_core_data(df, fill_loss_date=True):
+def prep_core_data(df):
     # Log
     df['meter_reading'] = np.log1p(df['meter_reading'].values)
-
-    # Check lossed Date  ####################################################################
-    id_list = []
-    meter_list = []
-    rows_list = []
-
-    for id_ in range(df['building_id'].nunique()):
-        for meter in range(4):
-            temp = extract_id_meter(df, id_, meter)
-            rows = temp.shape[0]
-            del temp
-            gc.collect()
-            if rows not in [0, 8784]:
-                id_list.append(id_)
-                meter_list.append(meter)
-                rows_list.append(rows)
-
-    df_loss = pd.DataFrame({
-        'building_id': id_list,
-        'meter': meter_list,
-        'rows': rows_list
-    })
-    del id_list, meter_list, rows_list
-    gc.collect()
-
-    # Fill dropped Date  ####################################################################
-    def fill_date(_df, building_id, meter):
-        temp = extract_id_meter(_df, building_id, meter)
-
-        dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
-        dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-
-        temp = pd.merge(temp, dates_DF, how="outer", left_on=['timestamp'], right_on=['Date'])
-        del temp['timestamp']
-        temp = temp.rename(columns={'Date': 'timestamp'})
-        temp['building_id'] = building_id
-        temp['meter'] = meter
-
-        temp = temp[temp['meter_reading'].isnull()]
-        _df = pd.concat([_df, temp], axis=0, ignore_index=True, sort=True)
-        del temp
-        gc.collect()
-
-        return _df
-
-    if fill_loss_date:
-        for _id, meter in zip(df_loss['building_id'], df_loss['meter']):
-            df = fill_date(df, _id, meter)
-
-    del df_loss
-    gc.collect()
 
     # Interpolate    ####################################################################
     for _id in range(df['building_id'].nunique()):
@@ -133,15 +73,13 @@ def prep_core_data(df, fill_loss_date=True):
             df.loc[drop_rows.index, 'meter_reading'] = np.nan
 
             # Smoothing
-            upper = np.percentile(temp['meter_reading'], 99)
-            lower = np.percentile(temp['meter_reading'], 1)
-            temp.loc[temp['meter_reading'] > upper, 'meter_reading'] = np.nan
-            temp.loc[temp['meter_reading'] < lower, 'meter_reading'] = np.nan
+            # upper = np.percentile(temp['meter_reading'], 99)
+            # lower = np.percentile(temp['meter_reading'], 1)
+            # temp.loc[temp['meter_reading'] > upper, 'meter_reading'] = np.nan
+            # temp.loc[temp['meter_reading'] < lower, 'meter_reading'] = np.nan
 
-            # Date of meter_reading == 0 deals as NaN
-            temp.loc[temp['meter_reading'] == 0, 'meter_reading'] = np.nan
             # Use Interpolation for Filling NaN
-            temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=3)
+            temp['meter_reading'] = temp['meter_reading'].interpolate(limit_area='inside', limit=2)
             df.loc[temp.index, 'meter_reading'] = temp.loc[temp.index, 'meter_reading']
 
             del temp
@@ -154,59 +92,40 @@ def prep_core_data(df, fill_loss_date=True):
 
 
 # Preprocessing Weather Data
-def prep_weather_data(df, mode='train', fill_loss_date=True):
+def prep_weather_data(df):
     # Drop Features  #####################################################################
     drop_col = ['precip_depth_1_hr', 'sea_level_pressure', 'cloud_coverage']
     df.drop(drop_col, axis=1, inplace=True)
 
-    # Fill Lossed Date (Only Train)
-    if mode == 'train' and fill_loss_date:
-        dates_DF = pd.DataFrame(pd.date_range('2016-1-1', periods=366 * 24, freq='H'), columns=['Date'])
-        dates_DF['Date'] = dates_DF['Date'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-
-        for i in range(16):
-            temp = df[df['site_id'] == i].copy()
-            temp = pd.merge(temp, dates_DF, how="outer", left_on=['timestamp'], right_on=['Date'])
-            del temp['timestamp']
-            temp = temp.rename(columns={'Date': 'timestamp'})
-            temp['site_id'] = i
-            df = pd.concat([df, temp], axis=0, ignore_index=True, sort=True)
-            df.drop_duplicates(inplace=True)
-            del temp
-            gc.collect()
-
-        del dates_DF
-        gc.collect()
-
     # Convert GMT  #####################################################################
     # reference  https://www.kaggle.com/patrick0302/locate-cities-according-weather-temperature
-    GMT_converter = {0: 4, 1: 0, 2: 7, 3: 4, 4: 7, 5: 0, 6: 4, 7: 4, 8: 4, 9: 5, 10: 7, 11: 4, 12: 0, 13: 5, 14: 4, 15: 4}
-
-    for i in range(16):
-        temp = df[df['site_id'] == i].copy()
-        temp['timestamp'] = pd.to_datetime(temp['timestamp'].values)
-        temp.sort_values(by='timestamp', inplace=True)
-        temp['timestamp'] = temp['timestamp'] - datetime.timedelta(hours=GMT_converter[i])
-        temp['timestamp'] = temp['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
-        df.loc[temp.index, 'timestamp'] = temp.loc[temp.index, 'timestamp']
-        del temp
-        gc.collect()
+    # GMT_converter = {0: 4, 1: 0, 2: 7, 3: 4, 4: 7, 5: 0, 6: 4, 7: 4, 8: 4, 9: 5, 10: 7, 11: 4, 12: 0, 13: 5, 14: 4, 15: 4}
+    #
+    # for i in range(16):
+    #     temp = df[df['site_id'] == i].copy()
+    #     temp['timestamp'] = pd.to_datetime(temp['timestamp'].values)
+    #     temp.sort_values(by='timestamp', inplace=True)
+    #     temp['timestamp'] = temp['timestamp'] - datetime.timedelta(hours=GMT_converter[i])
+    #     temp['timestamp'] = temp['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %T'))
+    #     df.loc[temp.index, 'timestamp'] = temp.loc[temp.index, 'timestamp']
+    #     del temp
+    #     gc.collect()
 
     # Create Features per Site Id  #####################################################################
     # Fillna(Interpolate)
-    for i in range(df['site_id'].nunique()):
-        temp = df[df['site_id'] == i].copy()
-        temp = temp.sort_values(by='timestamp')
-
-        # Interpolation
-        # mixed Linear & Cubic Method  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/116012#latest-667255
-        cols = ['air_temperature', 'dew_temperature', 'wind_direction', 'wind_speed']
-        for c in cols:
-            temp[c] = temp[c].interpolate(method='linear', limit_direction='both')
-            df.loc[temp.index, c] = temp.loc[temp.index, c]
-
-        del temp
-        gc.collect()
+    # for i in range(df['site_id'].nunique()):
+    #     temp = df[df['site_id'] == i].copy()
+    #     temp = temp.sort_values(by='timestamp')
+    #
+    #     # Interpolation
+    #     # mixed Linear & Cubic Method  https://www.kaggle.com/c/ashrae-energy-prediction/discussion/116012#latest-667255
+    #     cols = ['air_temperature', 'dew_temperature', 'wind_direction', 'wind_speed']
+    #     for c in cols:
+    #         temp[c] = temp[c].interpolate(method='linear', limit_direction='both')
+    #         df.loc[temp.index, c] = temp.loc[temp.index, c]
+    #
+    #     del temp
+    #     gc.collect()
 
     # relative Hummd  #####################################################################
     # https://soudan1.biglobe.ne.jp/qa5356721.html
@@ -273,7 +192,6 @@ def prep_weather_data(df, mode='train', fill_loss_date=True):
 
     for item in beaufort:
         df.loc[(df['wind_speed'] >= item[1]) & (df['wind_speed'] < item[2]), 'beaufort_scale'] = item[0]
-    df['beaufort_scale'] = df['beaufort_scale'].astype(np.uint8)
 
     # Create Features per Site Id  #####################################################################
     for i in range(df['site_id'].nunique()):
@@ -334,21 +252,17 @@ def prep_building_data(df):
 # Preprocessing Datetime Feature
 def prep_datetime_features(df):
     # Datetime  #####################################################################
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['month'] = df['timestamp'].dt.month.astype(np.uint8)
     df['hour'] = df['timestamp'].dt.hour.astype(np.uint8)
     df['dayofweek'] = df['timestamp'].dt.dayofweek.astype(np.uint8)
     df['weekday'] = df['timestamp'].dt.weekday.astype(np.uint8)
-    df['weekend'] = 0
-    df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'weekend'] = 1
-    df['weekend'] = df['weekend'].astype(np.uint8)
 
     # Holiday  #####################################################################
     dates_range = pd.date_range(start='2015-12-31', end='2019-01-01')
     us_holidays = calendar().holidays(start=dates_range.min(), end=dates_range.max())
     df['is_holiday'] = (
         df['timestamp'].dt.date.astype('datetime64').isin(us_holidays)).astype(np.int8)
-    df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'is_holiday'] = 1
+    # df.loc[(df['weekday'] == 5) | (df['weekday'] == 6), 'is_holiday'] = 1
     del us_holidays
     gc.collect()
 

@@ -17,21 +17,23 @@ from Utils.Parameter import *
 _start = time.time()
 chunk_size = 500000
 today = datetime.datetime.now().strftime('%Y%m%d')
-use_col_nums = 40
+use_col_nums = 60
 params = g_params_3
 
-train_data_path = '../input/prep_train_20191113.pkl'
-test_data_path = '../input/prep_test_20191113_*.pkl'
-feature_importance_list_path = '../Importance/importance_20191113.csv'
+train_data_path = '../input/prep_train_20191116.pkl'
+test_data_path = '../input/prep_test_20191116_*.pkl'
+feature_importance_list_path = '../Importance/importance_20191116.csv'
 
 # Prep Train Data  #####################################################################
 set_cols = pd.read_csv(feature_importance_list_path)['feature'][:use_col_nums].tolist()
+set_cols = [c for c in set_cols if c not in
+            ['building_mean', 'building_median', 'building_max', 'building_min', 'building_std']]
 
 # Delete specific columns
 # drop_cols = ['building_id_meter_month', 'building_id_month', 'building_id_meter_month']
 # set_cols = [c for c in set_cols if c not in drop_cols]
 
-train_set_cols = set_cols + ['meter_reading', 'month']
+train_set_cols = set_cols + ['meter_reading']
 
 # Load Pkl File  #####################################################################
 print('Create Model...')
@@ -40,9 +42,9 @@ with open(train_data_path, 'rb') as f:
 
 # Model Create  #####################################################################
 model = Trainer(model_type='lgb')
-_ = model.train_half_by_month(Dataset.df[train_set_cols], **params)
+_ = model.train_half(Dataset.df[train_set_cols], **params)
 # save models
-with open(f'../Model/lgb_models_{today}.pkl', 'wb') as f:
+with open(f'../Model/{model.model_type}_models_{today}.pkl', 'wb') as f:
     pickle.dump(model, f, protocol=4)
 
 # Prediction  #####################################################################
@@ -74,7 +76,7 @@ sub = pd.DataFrame({
 })
 
 # Clip
-# sub['meter_reading'] = sub['meter_reading'].clip(lower=0)
+sub['meter_reading'] = sub['meter_reading'].clip(lower=0)
 
 # Create Submit DataFrame
 sub.sort_values(by='row_id', ascending=True, inplace=True)

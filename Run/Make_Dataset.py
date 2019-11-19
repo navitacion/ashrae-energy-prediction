@@ -37,11 +37,8 @@ read_dtypes_weather = {
     'sea_level_pressure': 'float32'
 }
 
+
 def set_dtypes(df, cat_cols):
-    # float16
-    cols = df.select_dtypes(include=[np.float64]).columns
-    for c in cols:
-        df[c] = df[c].astype(np.float32)
     # category
     for c in cat_cols:
         try:
@@ -53,7 +50,6 @@ def set_dtypes(df, cat_cols):
 
 # Config  #####################################################################
 today = (datetime.datetime.now()).strftime('%Y%m%d')
-fill_loss_date = False
 
 # Prep Train Data  #####################################################################
 print('Train...')
@@ -62,18 +58,15 @@ train = pd.read_csv("../input/train.csv", dtype=read_dtypes)
 df_weather_train = pd.read_csv("../input/weather_train.csv", dtype=read_dtypes_weather)
 df_building = pd.read_csv("../input/building_metadata.csv", dtype=read_dtypes_building)
 
-# train = train.sample(frac=0.01)
-
 # Prepare Train Data
 Dataset = PreprocessingDataset()
-Dataset.prep(train, df_weather_train, df_building, mode='train', fill_loss_date=fill_loss_date)
-
-# Data Type  #####################################################################
-# Dataset.df = set_dtypes(Dataset.df, cat_cols)
+Dataset.prep(train, df_weather_train, df_building, mode='train')
+Dataset.df = set_dtypes(Dataset.df, cat_cols=cat_cols)
 
 # Memory Clear
 del train, df_weather_train, df_building
 gc.collect()
+
 # Save Preprocessed Train Data
 with open(f'../input/prep_train_{today}.pkl', 'wb') as f:
     pickle.dump(Dataset, f, protocol=4)
@@ -107,6 +100,7 @@ del Dataset.df
 gc.collect()
 
 # Create Test Dataset  #####################################################################
+# Chunk_size ver.
 print('Test...')
 chunksize = 15000000
 _start = time.time()
@@ -122,9 +116,7 @@ for i, test in enumerate(test_gen):
     sys.stdout.flush()
 
     Dataset.prep(test, df_weather_test, df_building, mode='test')
-
-    # Data Type  #####################################################################
-    Dataset.df = set_dtypes(Dataset.df, cat_cols)
+    Dataset.df = set_dtypes(Dataset.df, cat_cols=cat_cols)
 
     # Save Preprocessed Test Data  #####################################################################
     with open(f'../input/prep_test_{today}_{i}.pkl', 'wb') as f:
@@ -139,3 +131,32 @@ print('Test Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(second
 print('')
 
 print('Data Already...')
+
+
+
+
+# Prep test Data  #####################################################################
+print('test...')
+_start = time.time()
+test = pd.read_csv("../input/test.csv", dtype=read_dtypes)
+df_weather_test = pd.read_csv("../input/weather_test.csv", dtype=read_dtypes_weather)
+df_building = pd.read_csv("../input/building_metadata.csv", dtype=read_dtypes_building)
+
+# Prepare test Data
+Dataset = PreprocessingDataset()
+Dataset.prep(test, df_weather_test, df_building, mode='test')
+Dataset.df = set_dtypes(Dataset.df, cat_cols=cat_cols)
+
+# Memory Clear
+del test, df_weather_test, df_building
+gc.collect()
+
+# Save Preprocessed test Data
+with open(f'../input/prep_test_{today}.pkl', 'wb') as f:
+    pickle.dump(Dataset, f, protocol=4)
+
+print('Prep testData Shape: ', Dataset.df.shape)
+
+elapsedtime = time.time() - _start
+print('test Preprocessing Elapsed Time: {}'.format(str(datetime.timedelta(seconds=elapsedtime))))
+print('')

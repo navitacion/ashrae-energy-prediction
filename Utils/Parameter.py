@@ -52,9 +52,9 @@ g_params_2 = {
 
 g_params_3 = {
     'cv': KFold(n_splits=3, shuffle=False),
-    'num_boost_round': 1000,
+    'num_boost_round': 10000,
     'early_stopping_rounds': 200,
-    'verbose': 1000,
+    'verbose': 500,
     'params': model_params_2
 }
 

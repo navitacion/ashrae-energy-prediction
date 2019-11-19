@@ -13,14 +13,36 @@ class PreprocessingDataset:
     def __init__(self):
         self.df = None
 
-    def prep(self, df, df_weather, df_building, mode='train', fill_loss_date=True):
+    def prep(self, df, df_weather, df_building, mode='train'):
+
+        # Reduce Memory
+        if mode == 'train':
+            use_float16 = True
+        else:
+            use_float16 = False
+
+        df = reduce_mem_usage(df, use_float16=use_float16)
+        df_weather = reduce_mem_usage(df_weather, use_float16=use_float16)
+        df_building = reduce_mem_usage(df_building, use_float16=use_float16)
 
         # Core Data Prep  #####################################################################
+        # if mode == 'train':
+        #     df = prep_core_data(df)
+
         if mode == 'train':
-            df = prep_core_data(df, fill_loss_date=fill_loss_date)
+            df['meter_reading'] = np.log1p(df['meter_reading'].values)
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['M'] = df['timestamp'].dt.month
+            df['D'] = df['timestamp'].dt.day
+            df = df.query('not (building_id <= 104 & meter == 0 & M <= 4)')
+            df = df.query('not (building_id <= 104 & meter == 0 & M == 5 & D <= 20)')
+            del df['M'], df['D']
+            # df = df.query('not (building_id <= 104 & meter == 0 & timestamp <= "2016-05-20")')
+        else:
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
 
         # Weather Data Prep  #####################################################################
-        df_weather = prep_weather_data(df_weather, mode=mode, fill_loss_date=fill_loss_date)
+        df_weather = prep_weather_data(df_weather)
 
         # Building MetaData Prep  #####################################################################
         df_building = prep_building_data(df_building)
@@ -39,27 +61,27 @@ class PreprocessingDataset:
 
         # Sort Timestamp  #####################################################################
         if mode == 'train':
-            self.df.sort_values(by=['timestamp', 'building_id'], ascending=True, inplace=True)
+            self.df.sort_values('timestamp', inplace=True)
             self.df.reset_index(drop=True, inplace=True)
         del self.df['timestamp']
         gc.collect()
 
         # TargetEncoding  #####################################################################
-        if mode == 'train':
-            df_group = self.df.groupby('building_id')['meter_reading']
-            self.building_mean = df_group.mean().astype(np.float16)
-            self.building_median = df_group.median().astype(np.float16)
-            self.building_min = df_group.min().astype(np.float16)
-            self.building_max = df_group.max().astype(np.float16)
-            self.building_std = df_group.std().astype(np.float16)
-
-        self.df['building_mean'] = self.df['building_id'].map(self.building_mean)
-        self.df['building_median'] = self.df['building_id'].map(self.building_median)
-        self.df['building_min'] = self.df['building_id'].map(self.building_min)
-        self.df['building_max'] = self.df['building_id'].map(self.building_max)
-        self.df['building_std'] = self.df['building_id'].map(self.building_std)
-
-        self.df = reduce_mem_usage(self.df)
+        # if mode == 'train':
+        #     df_group = self.df.groupby('building_id')['meter_reading']
+        #     self.building_mean = df_group.mean().astype(np.float16)
+        #     self.building_median = df_group.median().astype(np.float16)
+        #     self.building_min = df_group.min().astype(np.float16)
+        #     self.building_max = df_group.max().astype(np.float16)
+        #     self.building_std = df_group.std().astype(np.float16)
+        #
+        # self.df['building_mean'] = self.df['building_id'].map(self.building_mean)
+        # self.df['building_median'] = self.df['building_id'].map(self.building_median)
+        # self.df['building_min'] = self.df['building_id'].map(self.building_min)
+        # self.df['building_max'] = self.df['building_id'].map(self.building_max)
+        # self.df['building_std'] = self.df['building_id'].map(self.building_std)
+        #
+        # self.df = reduce_mem_usage(self.df)
 
         # Group feature  #####################################################################
         self.df['building_id_month'] = self.df['building_id'].astype(str) + '_' + self.df['month'].astype(str)
@@ -96,29 +118,11 @@ class PreprocessingDataset:
             del temp
             gc.collect()
 
-        # CatBoostEncoder  #####################################################################
-        # list_cols = ['primary_use', 'building_id_month', 'building_id_meter_month']
-        # temp = self.df[list_cols].copy()
-        # if mode == 'train':
-        #     self.ce_cat = ce.CatBoostEncoder(cols=list_cols, handle_unknown='impute')
-        #     temp = self.ce_cat.fit_transform(temp, self.df['meter_reading'])
-        #     temp = temp.astype('float32')
-        #     temp.columns = [s + '_CB_enc' for s in list_cols]
-        #     self.df = pd.concat([self.df, temp], axis=1)
-        #     del temp
-        #     gc.collect()
-        #
-        # elif mode == 'test':
-        #     temp = self.ce_cat.transform(temp)
-        #     temp = temp.astype('float32')
-        #     temp.columns = [s + '_CB_enc' for s in list_cols]
-        #     self.df = pd.concat([self.df, temp], axis=1)
-        #     del temp
-        #     gc.collect()
+        # Drop cols
+        drop_cols = ['building_id_month', 'building_id_meter_month']
+        self.df.drop(drop_cols, axis=1, inplace=True)
 
         # Set_Dtypes  #####################################################################
-        self.df = reduce_mem_usage(self.df)
-
         def set_dtypes(df, cat_cols):
             # category
             for c in cat_cols:
