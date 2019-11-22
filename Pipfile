@@ -92,6 +92,7 @@ werkzeug = "==0.16.0"
 widgetsnbextension = "==3.5.1"
 zipp = "==0.6.0"
 optuna = "*"
+ngboost = "*"
 
 [requires]
 python_version = "3.7"
