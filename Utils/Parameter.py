@@ -22,10 +22,32 @@ lgb_params_2 = {
     "reg_lambda": 2,
 }
 
+lgb_params_3 = {
+    'objective': 'regression',
+    'boosting_type': 'gbrt',
+    'metric': 'rmse',
+    'n_jobs': -1,
+    'learning_rate': 0.01,
+    'max_bin': 255,
+    'bagging_fraction': 0.42523401307460185,
+    'bagging_freq': 6,
+    'colsample_bytree': 0.7187743617504782,
+    'feature_fraction': 0.8822412268247286,
+    'max_depth': 10,
+    'min_data_in_leaf': 42,
+    'num_leaves': 279,
+    'reg_lambda': 114.8060332041216,
+    'subsample': 0.8631504025541011,
+    'verbose': -1,
+    'seed': 42
+}
+
+
+
 # CatBoost
 # Model Params  ##################################################################
 cat_params = {
-    'learning_rate': 0.3,
+    'learning_rate': 0.03,
     'eval_metric': 'RMSE',
     'loss_function': 'RMSE',
     'random_seed': 42,

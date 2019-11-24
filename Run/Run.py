@@ -7,12 +7,12 @@ warnings.filterwarnings('ignore')
 
 
 # Config  ####################################################################################
-num_boost_round = 1000
-early_stopping_rounds = 50
-verbose = 200
+num_boost_round = 10000
+early_stopping_rounds = 500
+verbose = 500
 use_feature_num = 40
-params = cat_params
-model_type = 'cat'
+params = lgb_params_3
+model_type = 'lgb'
 Save_Pickle = True
 today = datetime.datetime.now().strftime('%Y%m%d')
 
@@ -22,8 +22,10 @@ data.prep(phase='importance')
 importance_df = data.get_feature_importance()
 del data
 gc.collect()
+print('')
 
 # Train  ####################################################################################
+print('Train Model')
 train_data = Dataloader()
 train_data.prep(phase='train')
 if Save_Pickle:
@@ -37,10 +39,12 @@ del train_data
 gc.collect()
 
 if Save_Pickle:
-    with open(f'../input/trainer_{today}.pkl', 'wb') as f:
+    with open(f'../input/trainer_{trainer.model_type}_{today}.pkl', 'wb') as f:
         pickle.dump(trainer, f, protocol=4)
+print('')
 
 # Predict  ####################################################################################
+print('Prediction')
 test_data = Dataloader()
 test_data.prep(phase='test')
 if Save_Pickle:
