@@ -196,6 +196,9 @@ class Trainer:
         elif self.model_type == 'ng':
             print('NGBoost Model Creating...')
             print("Building model with first half and validating on second half:")
+            
+            self.X_train[np.isnan(self.X_train.astype(np.float32))] = -9999
+            
             model_1 = NGBRegressor(Base=default_tree_learner, Dist=Normal,  # Normal, LogNormal
                                    Score=MLE(), natural_gradient=True, verbose=True,
                                    n_estimators=num_boost_round, verbose_eval=verbose,
