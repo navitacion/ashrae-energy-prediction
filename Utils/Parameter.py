@@ -42,7 +42,60 @@ lgb_params_3 = {
     'seed': 42
 }
 
+lgb_params_4 = {
+    'objective': 'regression',
+    'boosting_type': 'gbrt',
+    'metric': 'rmse',
+    'n_jobs': -1,
+    'learning_rate': 0.01,
+    'max_bin': 255,
+    'bagging_fraction': 0.6093725856068197,
+    'bagging_freq': 5,
+    'feature_fraction': 0.8637300341887708,
+    'max_depth': 20,
+    'min_data_in_leaf': 34,
+    'num_leaves': 300,
+    'reg_lambda': 9.236955134366601,
+    'verbose': -1,
+    'seed': 42
+}
 
+lgb_params_5 = {
+    'objective': 'regression',
+    'boosting_type': 'gbrt',
+    'metric': 'rmse',
+    'n_jobs': -1,
+    'learning_rate': 0.01,
+    'max_bin': 255,
+    'bagging_fraction': 0.6093725856068197,
+    'bagging_freq': 5,
+    'feature_fraction': 0.8637300341887708,
+    'max_depth': 20,
+    'min_data_in_leaf': 34,
+    'num_leaves': 1200,
+    'reg_lambda': 9.236955134366601,
+    'verbose': -1,
+    'seed': 42
+}
+
+
+lgb_params_6 = {
+    'objective': 'regression',
+    'boosting_type': 'goss',
+    'metric': 'rmse',
+    'n_jobs': -1,
+    'learning_rate': 0.001,
+    'max_bin': 255,
+    'max_depth': 20,
+    'num_leaves': 275,
+    'colsample_bytree': 0.6942838936080526,
+    'subsample': 0.6958677000718564,
+    'min_data_in_leaf': 36,
+    'feature_fraction': 0.8989966937060903,
+    'reg_lambda': 0.31129758193713547,
+    'verbose': -1,
+    'seed': 42
+}
 
 # CatBoost
 # Model Params  ##################################################################
@@ -55,4 +108,19 @@ cat_params = {
     'task_type': 'GPU',
     'depth': 8,
     }
+
+
+cat_params_2 = {
+    'learning_rate': 0.03,
+    'eval_metric': 'RMSE',
+    'loss_function': 'RMSE',
+    'random_seed': 42,
+    'task_type': 'GPU',
+    'grow_policy': 'Lossguide',
+    'bagging_temperature': 0.03803178354860343,
+    'depth': 10,
+    'min_data_in_leaf': 23,
+    'num_leaves': 161,
+    'random_strength': 77
+}
 

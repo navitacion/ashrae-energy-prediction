@@ -175,6 +175,13 @@ def prepare_data(X, building_data, weather_data, test=False, frac=None):
         X['D'] = X['timestamp'].dt.day
         X = X.query('not (building_id <= 104 & meter == 0 & M <= 4)')
         X = X.query('not (building_id <= 104 & meter == 0 & M == 5 & D <= 20)')
+
+        # https://www.kaggle.com/purist1024/ashrae-simple-data-cleanup-lb-1-08-no-leaks/notebook
+        X = X.query('not (meter == 0 & meter_reading == 0)')
+        X = X.query('not (building_id == 1099 & meter == 2 & meter_reading > 3e4)')
+        X = X.query('not (site_id == 0 & meter == 0 & M <= 4)')
+        X = X.query('not (site_id == 0 & meter == 0 & M == 5 & D <= 20)')
+
         X['M'] = X['M'].astype(np.int16)
         del X['D']
 

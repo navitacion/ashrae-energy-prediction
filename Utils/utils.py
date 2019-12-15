@@ -228,6 +228,108 @@ class Trainer:
 
         return self.models
 
+    def train_by_month(self, params, train_data, num_boost_round, early_stopping_rounds, verbose,
+                   importance_df, use_feature_num=None):
+
+        print('Model Creating...')
+
+        if use_feature_num is not None:
+            self.features = importance_df['feature'][:use_feature_num].tolist()
+        else:
+            self.features = self.data.X.columns
+
+        self.models = []
+        assert train_data.phase == 'train', 'Use Train Dataset!'
+
+        self.features = [c for c in self.features if c not in ['M']]
+
+        data = pd.concat([train_data.X, train_data.y], axis=1)
+
+        # Part 0  ############################################################################
+        data_1 = data.query('M <= 8')
+        data_2 = data.query('8 < M <= 12')
+
+        print('LightGBM Model Creating...')
+        d_half_1 = lgb.Dataset(data_1[self.features], label=data_1['meter_reading'])
+        d_half_2 = lgb.Dataset(data_2[self.features], label=data_2['meter_reading'])
+
+        del data_1, data_2
+        gc.collect()
+
+        print("Building model with first half and validating on second half:")
+        model_1 = lgb.train(params, train_set=d_half_1, num_boost_round=num_boost_round,
+                            valid_sets=[d_half_1, d_half_2], verbose_eval=verbose,
+                            early_stopping_rounds=early_stopping_rounds)
+        self.models.append(model_1)
+        del model_1
+        gc.collect()
+        print('')
+
+        # Part 1  ############################################################################
+        data_1 = data.query('M <= 9')
+        data_2 = data.query('9 < M <= 12')
+
+        print('LightGBM Model Creating...')
+        d_half_1 = lgb.Dataset(data_1[self.features], label=data_1['meter_reading'])
+        d_half_2 = lgb.Dataset(data_2[self.features], label=data_2['meter_reading'])
+
+        del data_1, data_2
+        gc.collect()
+
+        print("Building model with first half and validating on second half:")
+        model_1 = lgb.train(params, train_set=d_half_1, num_boost_round=num_boost_round,
+                            valid_sets=[d_half_1, d_half_2], verbose_eval=verbose,
+                            early_stopping_rounds=early_stopping_rounds)
+        self.models.append(model_1)
+        del model_1
+        gc.collect()
+        print('')
+
+        # Part 2  ############################################################################
+        data_1 = data.query('M <= 10')
+        data_2 = data.query('10 < M <= 12')
+
+        print('LightGBM Model Creating...')
+        d_half_1 = lgb.Dataset(data_1[self.features], label=data_1['meter_reading'])
+        d_half_2 = lgb.Dataset(data_2[self.features], label=data_2['meter_reading'])
+
+        del data_1, data_2
+        gc.collect()
+
+        print("Building model with first half and validating on second half:")
+        model_1 = lgb.train(params, train_set=d_half_1, num_boost_round=num_boost_round,
+                            valid_sets=[d_half_1, d_half_2], verbose_eval=verbose,
+                            early_stopping_rounds=early_stopping_rounds)
+        self.models.append(model_1)
+        del model_1
+        gc.collect()
+        print('')
+
+        # Part 3  ############################################################################
+        data_1 = data.query('M <= 11')
+        data_2 = data.query('11 < M <= 12')
+
+        print('LightGBM Model Creating...')
+        d_half_1 = lgb.Dataset(data_1[self.features], label=data_1['meter_reading'])
+        d_half_2 = lgb.Dataset(data_2[self.features], label=data_2['meter_reading'])
+
+        del data_1, data_2
+        gc.collect()
+
+        print("Building model with first half and validating on second half:")
+        model_1 = lgb.train(params, train_set=d_half_1, num_boost_round=num_boost_round,
+                            valid_sets=[d_half_1, d_half_2], verbose_eval=verbose,
+                            early_stopping_rounds=early_stopping_rounds)
+        self.models.append(model_1)
+        del model_1
+        gc.collect()
+        print('')
+
+        del self.X_train, self.y_train
+        gc.collect()
+
+        return self.models
+
     def predict(self, test_data, model_list=None):
         print('Prediction...')
         assert test_data.phase == 'test', 'Use Test Dataset!'
